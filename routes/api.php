@@ -18,6 +18,8 @@ use App\Http\Controllers\InvoiceController;
 
 Route::post('/register', [AuthController::class, 'create_user']);
 
+Route::post('/login', [AuthController::class, 'login']);
+
 Route::middleware('auth:sanctum', 'role:admin,sales,staff,dispatch')->group(function () {
 
     // users route
