@@ -18,7 +18,7 @@ use App\Http\Controllers\InvoiceController;
 
 Route::post('/register', [AuthController::class, 'create_user']);
 
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware('auth:sanctum', 'role:admin,sales,staff,dispatch')->group(function () {
 
     // users route
     Route::prefix('users')->group(function () {
@@ -28,6 +28,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/delete', [UserController::class, 'delete']);
         Route::post('/reset_password', [AuthController::class, 'updatePassword']);
     });
+
+    Route::post('/log_out', [AuthController::class, 'logout']);
 
     // category route
     Route::prefix('category')->group(function () {

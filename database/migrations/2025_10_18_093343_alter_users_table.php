@@ -15,7 +15,8 @@ return new class extends Migration
             //
             // Add the new columns
             $table->string('username')->unique()->after('password');
-            $table->enum('order_views', ['self', 'global'])->default('self')->after('username');
+            $table->enum('role', ['admin', 'sales', 'staff', 'dispatch'])->after('username');
+            $table->enum('order_views', ['self', 'global'])->default('self')->after('role');
             $table->enum('change_status', ['0', '1'])->default('0')->after('order_views');
             
             // Make the email column nullable
