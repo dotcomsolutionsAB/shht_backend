@@ -8,5 +8,5 @@ class ClientsContactPersonModel extends Model
 {
     //
     protected $table = 't_clients_contact_person';
-    protected $fillable = ['client_id', 'name', 'designation', 'mobile', 'email'];
+    protected $fillable = ['client', 'name', 'designation', 'mobile', 'email'];
 }

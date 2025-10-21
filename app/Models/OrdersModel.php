@@ -8,5 +8,5 @@ class OrdersModel extends Model
 {
     //
     protected $table = 't_orders';
-    protected $fillable = [];
+    protected $fillable = ['client', 'client_contact_person', 'so_no', 'so_date', 'order_no', 'order_date', 'invoice', 'status', 'initiated_by', 'checked_by', 'dispatched_by', 'drive_link'];
 }

@@ -8,5 +8,5 @@ class InvoiceModel extends Model
 {
     //
     protected $table = 't_invoice';
-    protected $fillable = ['t_order_id'];
+    protected $fillable = ['order', 'invoice_number', 'invoice_date', 'billed_by'];
 }

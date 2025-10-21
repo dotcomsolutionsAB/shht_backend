@@ -8,5 +8,5 @@ class SubCategoryModel extends Model
 {
     //
     protected $table = 't_sub_category';
-    protected $fillable = ['category_id', 'name'];
+    protected $fillable = ['category', 'name'];
 }
