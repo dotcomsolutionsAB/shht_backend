@@ -11,12 +11,11 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('t_invoice', function (Blueprint $table) {
+        Schema::create('t_counter', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('order'); // Assuming `t_order` table exists
-            $table->string('invoice_number');
-            $table->date('invoice_date');
-            $table->date('billed_by');
+            $table->integer('number');
+            $table->string('prefix');
+            $table->string('postfix');
             $table->timestamps();
         });
     }
@@ -26,6 +25,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('t_invoice');
+        Schema::dropIfExists('t_counter');
     }
 };
