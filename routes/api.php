@@ -16,7 +16,7 @@ use App\Http\Controllers\InvoiceController;
 //     return $request->user();
 // })->middleware('auth:sanctum');
 
-Route::post('/register', [AuthController::class, 'create_user']);
+Route::post('/register', [AuthController::class, 'create']);
 
 Route::post('/login', [AuthController::class, 'login']);
 
