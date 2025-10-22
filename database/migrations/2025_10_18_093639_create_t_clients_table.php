@@ -16,7 +16,7 @@ return new class extends Migration
             $table->string('name');
             $table->unsignedBigInteger('category');
             $table->unsignedBigInteger('sub_category');
-            $table->text('tags');
+            $table->string('tags');
             $table->string('city');
             $table->string('state');
             $table->unsignedBigInteger('rm');
