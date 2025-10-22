@@ -14,6 +14,10 @@ return new class extends Migration
         Schema::create('t_orders', function (Blueprint $table) {
             $table->id();
             // Client and related info
+            $table->enum('company', [
+                'SHHT',
+                'SHAPN'
+            ]);
             $table->unsignedBigInteger('client');
             $table->unsignedBigInteger('client_contact_person');
 

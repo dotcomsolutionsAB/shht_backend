@@ -253,7 +253,6 @@ class ClientContactPersonController extends Controller
         }
     }
 
-
     // delete
     public function delete(Request $request, $id)
     {

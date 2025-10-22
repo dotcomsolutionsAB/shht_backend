@@ -76,7 +76,7 @@ class ClientsController extends Controller
     }
 
     // fetch
-    public function list(Request $request, $id = null)
+    public function fetch(Request $request, $id = null)
     {
         try {
             // ---------- Single record ----------

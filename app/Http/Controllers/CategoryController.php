@@ -56,7 +56,7 @@ class CategoryController extends Controller
     }
 
     // fetch
-    public function list(Request $request, $id = null)
+    public function fetch(Request $request, $id = null)
     {
         try {
             // If ID provided → fetch single category

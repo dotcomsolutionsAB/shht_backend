@@ -47,7 +47,7 @@ class TagsController extends Controller
     /**
      * Fetch tags (single by id or list with limit/offset)
      */
-    public function list(Request $request, $id = null)
+    public function fetch(Request $request, $id = null)
     {
         try {
             if ($id !== null) {

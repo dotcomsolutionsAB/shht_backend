@@ -25,7 +25,7 @@ Route::middleware('auth:sanctum', 'role:admin,sales,staff,dispatch')->group(func
     // users route
     Route::prefix('users')->group(function () {
         Route::post('/create', [UserController::class, 'create']);
-        Route::post('/fetch/{id?}', [UserController::class, 'list']);
+        Route::post('/retrieve/{id?}', [UserController::class, 'fetch']);
         Route::post('/edit/{id}', [UserController::class, 'update']);
         Route::delete('/delete/{id}', [UserController::class, 'delete']);
         Route::post('/reset_password', [AuthController::class, 'updatePassword']);
@@ -36,7 +36,7 @@ Route::middleware('auth:sanctum', 'role:admin,sales,staff,dispatch')->group(func
     // category route
     Route::prefix('category')->group(function () {
             Route::post('/create', [CategoryController::class, 'create']);
-            Route::post('/fetch/{id?}', [CategoryController::class, 'list']);
+            Route::post('/retrieve/{id?}', [CategoryController::class, 'fetch']);
             Route::post('/edit/{id}', [CategoryController::class, 'update']);
             Route::delete('/delete/{id}', [CategoryController::class, 'delete']);
     });
@@ -44,7 +44,7 @@ Route::middleware('auth:sanctum', 'role:admin,sales,staff,dispatch')->group(func
     // sub-category route
     Route::prefix('sub_category')->group(function () {
         Route::post('/create', [SubCategoryController::class, 'create']);
-        Route::post('/fetch/{id?}', [SubCategoryController::class, 'list']);
+        Route::post('/retrieve/{id?}', [SubCategoryController::class, 'fetch']);
         Route::post('/edit/{id}', [SubCategoryController::class, 'update']);
         Route::delete('/delete/{id}', [SubCategoryController::class, 'delete']);
     });
@@ -52,7 +52,7 @@ Route::middleware('auth:sanctum', 'role:admin,sales,staff,dispatch')->group(func
     // tags route
     Route::prefix('tags')->group(function () {
         Route::post('/create', [TagsController::class, 'create']);
-        Route::post('/fetch/{id?}', [TagsController::class, 'list']);
+        Route::post('/retrieve/{id?}', [TagsController::class, 'fetch']);
         Route::post('/edit/{id}', [TagsController::class, 'update']);
         Route::delete('/delete/{id}', [TagsController::class, 'delete']);
     });
@@ -60,23 +60,31 @@ Route::middleware('auth:sanctum', 'role:admin,sales,staff,dispatch')->group(func
     // clients route
     Route::prefix('clients')->group(function () {
         Route::post('/create', [ClientsController::class, 'create']);
-        Route::post('/fetch/{id?}', [ClientsController::class, 'list']);
+        Route::post('/retrieve/{id?}', [ClientsController::class, 'fetch']);
         Route::post('/edit/{id}', [ClientsController::class, 'update']);
         Route::delete('/delete/{id}', [ClientsController::class, 'delete']);
 
         // clients-contact-person route
         Route::prefix('contact_person')->group(function () {
             Route::post('/create', [ClientContactPersonController::class, 'create']);
-            Route::post('/fetch/{id?}', [ClientContactPersonController::class, 'list']);
+            Route::post('/retrieve/{id?}', [ClientContactPersonController::class, 'fetch']);
             Route::post('/edit/{id}', [ClientContactPersonController::class, 'update']);
             Route::delete('/delete/{id}', [ClientContactPersonController::class, 'delete']);
         });
     });
     
+    // counter route
+    Route::prefix('counter')->group(function () {
+        Route::post('/create', [CounterController::class, 'create']);
+        Route::post('/retrieve/{id?}', [CounterController::class, 'fetch']);
+        Route::post('/edit/{id}', [CounterController::class, 'update']);
+        Route::delete('/delete/{id}', [CounterController::class, 'delete']);
+    });
+
     // orders route
     Route::prefix('orders')->group(function () {
         Route::post('/create', [OrdersController::class, 'create']);
-        Route::post('/fetch/{id?}', [OrdersController::class, 'list']);
+        Route::post('/retrieve/{id?}', [OrdersController::class, 'fetch']);
         Route::post('/edit/{id}', [OrdersController::class, 'update']);
         Route::delete('/delete/{id}', [OrdersController::class, 'delete']);
     });
@@ -84,7 +92,7 @@ Route::middleware('auth:sanctum', 'role:admin,sales,staff,dispatch')->group(func
     // invoice route
     Route::prefix('invoice')->group(function () {
         Route::post('/create', [InvoiceController::class, 'create']);
-        Route::post('/fetch/{id?}', [InvoiceController::class, 'list']);
+        Route::post('/retrieve/{id?}', [InvoiceController::class, 'fetch']);
         Route::post('/edit/{id}', [InvoiceController::class, 'update']);
         Route::delete('/delete/{id}', [InvoiceController::class, 'delete']);
     });

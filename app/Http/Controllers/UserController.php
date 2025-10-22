@@ -80,7 +80,7 @@ class UserController extends Controller
      * Fetch a specific user by ID
      * OR fetch all users (paginated) when no ID is provided
      */
-    public function list(Request $request, $id = null)
+    public function fetch(Request $request, $id = null)
     {
         try {
             if ($id) {

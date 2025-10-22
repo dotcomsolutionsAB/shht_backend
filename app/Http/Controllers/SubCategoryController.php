@@ -49,7 +49,7 @@ class SubCategoryController extends Controller
     /**
      * Fetch (list or single by id). Supports limit/offset and optional category filter.
      */
-    public function list(Request $request, $id = null)
+    public function fetch(Request $request, $id = null)
     {
         try {
             if ($id !== null) {
