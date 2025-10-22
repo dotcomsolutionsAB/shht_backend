@@ -139,7 +139,7 @@ class UserController extends Controller
             $request->validate([
                 'name'          => 'required|string|max:255',
                 'email'         => ['nullable','email','max:255',Rule::unique('users','email')->ignore($id)],
-                'password'      => 'required|string|min:8',
+                // 'password'      => 'required|string|min:8',
                 'username'      => ['required','string','max:255',Rule::unique('users','username')->ignore($id)],
                 'order_views'   => ['required',Rule::in(['self','global'])],
                 'change_status' => ['required',Rule::in(['0','1'])],
@@ -148,7 +148,7 @@ class UserController extends Controller
             $updated = User::where('id', $id)->update([
                 'name'          => $request->name,
                 'email'         => $request->filled('email') ? strtolower($request->email) : null,
-                'password'      => bcrypt($request->password),
+                // 'password'      => bcrypt($request->password),
                 'username'      => $request->username,
                 'order_views'   => $request->order_views,
                 'change_status' => $request->change_status,
