@@ -37,39 +37,39 @@ Route::middleware('auth:sanctum', 'role:admin,sales,staff,dispatch')->group(func
     Route::prefix('category')->group(function () {
             Route::post('/create', [CategoryController::class, 'create']);
             Route::post('/fetch/{id?}', [CategoryController::class, 'list']);
-            Route::post('/edit', [CategoryController::class, 'update']);
-            Route::delete('/delete', [CategoryController::class, 'delete']);
+            Route::post('/edit/{id}', [CategoryController::class, 'update']);
+            Route::delete('/delete/{id}', [CategoryController::class, 'delete']);
     });
 
     // sub-category route
     Route::prefix('sub_category')->group(function () {
         Route::post('/create', [SubCategoryController::class, 'create']);
         Route::post('/fetch/{id?}', [SubCategoryController::class, 'list']);
-        Route::post('/edit', [SubCategoryController::class, 'update']);
-        Route::delete('/delete', [SubCategoryController::class, 'delete']);
+        Route::post('/edit/{id}', [SubCategoryController::class, 'update']);
+        Route::delete('/delete/{id}', [SubCategoryController::class, 'delete']);
     });
 
     // tags route
     Route::prefix('tags')->group(function () {
         Route::post('/create', [TagsController::class, 'create']);
         Route::post('/fetch/{id?}', [TagsController::class, 'list']);
-        Route::post('/edit', [TagsController::class, 'update']);
-        Route::delete('/delete', [TagsController::class, 'delete']);
+        Route::post('/edit/{id}', [TagsController::class, 'update']);
+        Route::delete('/delete/{id}', [TagsController::class, 'delete']);
     });
 
     // clients route
     Route::prefix('clients')->group(function () {
         Route::post('/create', [ClientsController::class, 'create']);
         Route::post('/fetch/{id?}', [ClientsController::class, 'list']);
-        Route::post('/edit', [ClientsController::class, 'update']);
-        Route::delete('/delete', [ClientsController::class, 'delete']);
+        Route::post('/edit/{id}', [ClientsController::class, 'update']);
+        Route::delete('/delete/{id}', [ClientsController::class, 'delete']);
 
         // clients-contact-person route
         Route::prefix('contact_person')->group(function () {
             Route::post('/create', [ClientContactPersonController::class, 'create']);
             Route::post('/fetch/{id?}', [ClientContactPersonController::class, 'list']);
-            Route::post('/edit', [ClientContactPersonController::class, 'update']);
-            Route::delete('/delete', [ClientContactPersonController::class, 'delete']);
+            Route::post('/edit/{id}', [ClientContactPersonController::class, 'update']);
+            Route::delete('/delete/{id}', [ClientContactPersonController::class, 'delete']);
         });
     });
     
@@ -77,15 +77,15 @@ Route::middleware('auth:sanctum', 'role:admin,sales,staff,dispatch')->group(func
     Route::prefix('orders')->group(function () {
         Route::post('/create', [OrdersController::class, 'create']);
         Route::post('/fetch/{id?}', [OrdersController::class, 'list']);
-        Route::post('/edit', [OrdersController::class, 'update']);
-        Route::delete('/delete', [OrdersController::class, 'delete']);
+        Route::post('/edit/{id}', [OrdersController::class, 'update']);
+        Route::delete('/delete/{id}', [OrdersController::class, 'delete']);
     });
 
     // invoice route
     Route::prefix('invoice')->group(function () {
         Route::post('/create', [InvoiceController::class, 'create']);
         Route::post('/fetch/{id?}', [InvoiceController::class, 'list']);
-        Route::post('/edit', [InvoiceController::class, 'update']);
-        Route::delete('/delete', [InvoiceController::class, 'delete']);
+        Route::post('/edit/{id}', [InvoiceController::class, 'update']);
+        Route::delete('/delete/{id}', [InvoiceController::class, 'delete']);
     });
 });
