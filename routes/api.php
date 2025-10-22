@@ -31,7 +31,7 @@ Route::middleware('auth:sanctum', 'role:admin,sales,staff,dispatch')->group(func
         Route::post('/reset_password', [AuthController::class, 'updatePassword']);
     });
 
-    Route::post('/log_out', [AuthController::class, 'logout']);
+    Route::post('/logout', [AuthController::class, 'logout']);
 
     // category route
     Route::prefix('category')->group(function () {
