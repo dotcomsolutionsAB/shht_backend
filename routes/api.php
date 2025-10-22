@@ -26,8 +26,8 @@ Route::middleware('auth:sanctum', 'role:admin,sales,staff,dispatch')->group(func
     Route::prefix('users')->group(function () {
         Route::post('/create', [UserController::class, 'create']);
         Route::post('/fetch/{id?}', [UserController::class, 'list']);
-        Route::post('/edit', [UserController::class, 'update']);
-        Route::delete('/delete', [UserController::class, 'delete']);
+        Route::post('/edit/{id}', [UserController::class, 'update']);
+        Route::delete('/delete/{id}', [UserController::class, 'delete']);
         Route::post('/reset_password', [AuthController::class, 'updatePassword']);
     });
 
