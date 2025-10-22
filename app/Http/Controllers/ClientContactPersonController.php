@@ -176,7 +176,7 @@ class ClientContactPersonController extends Controller
                 ], 404);
             }
 
-            // 2) Validate input (client & name required; others optional)
+            // 2) Validate core fields
             $request->validate([
                 'client'      => ['required','integer','exists:t_clients,id'],
                 'name'        => ['required','string','max:255'],
@@ -185,26 +185,25 @@ class ClientContactPersonController extends Controller
                 'email'       => ['nullable','email','max:255'],
             ]);
 
-            // 3) Compute final values (merge provided with existing) to enforce the rule
-            $finalDesignation = $request->has('designation') ? $request->input('designation') : $cp->designation;
-            $finalMobile      = $request->has('mobile')      ? $request->input('mobile')      : $cp->mobile;
-            $finalEmail       = $request->has('email')       ? $request->input('email')       : $cp->email;
-
-            // Require at least one among designation/mobile/email after applying update
-            if (empty($finalDesignation) && empty($finalMobile) && empty($finalEmail)) {
+            // 3) NEW RULE: request MUST include at least one of the three
+            if (
+                ! $request->filled('designation') &&
+                ! $request->filled('mobile') &&
+                ! $request->filled('email')
+            ) {
                 return response()->json([
                     'status'  => false,
-                    'message' => 'At least one of designation, mobile, or email must be present.',
+                    'message' => 'Provide at least one of: designation, mobile, or email in the request.',
                 ], 422);
             }
 
-            // 4) Column-wise update (only set what changes)
+            // 4) Column-wise update (keep existing if a field not sent)
             $payload = [
                 'client'      => (int) $request->input('client'),
                 'name'        => $request->input('name'),
-                'designation' => $finalDesignation,
-                'mobile'      => $finalMobile,
-                'email'       => $finalEmail,
+                'designation' => $request->has('designation') ? $request->input('designation') : $cp->designation,
+                'mobile'      => $request->has('mobile')      ? $request->input('mobile')      : $cp->mobile,
+                'email'       => $request->has('email')       ? $request->input('email')       : $cp->email,
             ];
 
             DB::transaction(function () use ($id, $payload) {
@@ -240,7 +239,7 @@ class ClientContactPersonController extends Controller
                 'errors'  => $e->errors(),
             ], 422);
         } catch (\Throwable $e) {
-            Log::error('Contact person update failed', [
+            \Log::error('Contact person update failed', [
                 'contact_id' => $id,
                 'error'      => $e->getMessage(),
                 'file'       => $e->getFile(),
@@ -253,6 +252,7 @@ class ClientContactPersonController extends Controller
             ], 500);
         }
     }
+
 
     // delete
     public function delete(Request $request, $id)
