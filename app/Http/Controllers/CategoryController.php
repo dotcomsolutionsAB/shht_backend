@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use App\Models\CategoryModel;
+use Illuminate\Validation\Rule;
 use Illuminate\Http\Request;
 
 class CategoryController extends Controller
