@@ -53,35 +53,72 @@ class SubCategoryController extends Controller
     {
         try {
             if ($id !== null) {
-                $sub = SubCategoryModel::select('id','category','name')->find($id);
-                return $sub
-                    ? response()->json(['status'=>true,'message'=>'Sub-category fetched successfully','data'=>$sub], 200)
-                    : response()->json(['status'=>false,'message'=>'Sub-category not found'], 404);
+                $sub = SubCategoryModel::with(['categoryRef:id,name'])
+                    ->select('id','category','name') // use 'category_id' if that's your column
+                    ->find($id);
+
+                if (! $sub) {
+                    return response()->json(['status'=>false,'message'=>'Sub-category not found'], 404);
+                }
+
+                // Shape single item: category as object
+                $data = [
+                    'id'       => $sub->id,
+                    'name'     => $sub->name,
+                    'category' => $sub->categoryRef
+                        ? ['id' => $sub->categoryRef->id, 'name' => $sub->categoryRef->name]
+                        : null,
+                ];
+
+                return response()->json([
+                    'status'  => true,
+                    'message' => 'Sub-category fetched successfully',
+                    'data'    => $data,
+                ], 200);
             }
 
+            // List with limit/offset and optional category filter
             $limit    = (int) $request->input('limit', 10);
             $offset   = (int) $request->input('offset', 0);
-            $category = $request->input('category'); // optional filter
+            $category = $request->input('category'); // optional filter (id)
 
-            $query = SubCategoryModel::select('id','category','name')->orderBy('id','desc');
+            $query = SubCategoryModel::with(['categoryRef:id,name'])
+                ->select('id','category','name') // use 'category_id' if applicable
+                ->orderBy('id','desc');
+
             if ($category !== null) {
-                $query->where('category', (int) $category);
+                $query->where('category', (int) $category); // or 'category_id'
             }
 
             $items = $query->skip($offset)->take($limit)->get();
 
+            // Map to desired shape
+            $data = $items->map(function ($sub) {
+                return [
+                    'id'       => $sub->id,
+                    'name'     => $sub->name,
+                    'category' => $sub->categoryRef
+                        ? ['id' => $sub->categoryRef->id, 'name' => $sub->categoryRef->name]
+                        : null,
+                ];
+            });
+
             return response()->json([
                 'status'  => true,
                 'message' => 'Sub-categories fetched successfully',
-                'count'   => $items->count(),
-                'data'    => $items,
+                'count'   => $data->count(),
+                'data'    => $data,
             ], 200);
 
         } catch (\Throwable $e) {
-            Log::error('SubCategory fetch failed', ['err'=>$e->getMessage()]);
-            return response()->json(['status'=>false,'message'=>'Something went wrong while fetching sub-categories'], 500);
+            \Log::error('SubCategory fetch failed', ['err'=>$e->getMessage()]);
+            return response()->json([
+                'status'=>false,
+                'message'=>'Something went wrong while fetching sub-categories'
+            ], 500);
         }
     }
+
 
     /**
      * Update sub-category (unique name within same category, ignoring current row).
