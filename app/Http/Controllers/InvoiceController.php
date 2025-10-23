@@ -11,7 +11,7 @@ use Illuminate\Http\Request;
 
 class InvoiceController extends Controller
 {
-    //
+    // create
     public function create(Request $request)
     {
         try {
@@ -86,4 +86,253 @@ class InvoiceController extends Controller
         }
     }
 
+    // fetch
+    public function fetch(Request $request, $id = null)
+    {
+        try {
+            // ---------- Single invoice by ID ----------
+            if ($id !== null) {
+                $inv = InvoiceModel::with([
+                        'orderRef:id,so_no,order_no,status',
+                        'billedByRef:id,name,username',
+                    ])
+                    ->select('id','order','invoice_number','invoice_date','billed_by','created_at','updated_at')
+                    ->find($id);
+
+                if (! $inv) {
+                    return response()->json([
+                        'status'  => false,
+                        'message' => 'Invoice not found.',
+                    ], 404);
+                }
+
+                $data = [
+                    'id'             => $inv->id,
+                    'invoice_number' => $inv->invoice_number,
+                    'invoice_date'   => $inv->invoice_date,
+                    'order'          => $inv->orderRef ? [
+                        'id'       => $inv->orderRef->id,
+                        'so_no'    => $inv->orderRef->so_no,
+                        'order_no' => $inv->orderRef->order_no,
+                        'status'   => $inv->orderRef->status,
+                    ] : null,
+                    'billed_by'      => $inv->billedByRef ? [
+                        'id'       => $inv->billedByRef->id,
+                        'name'     => $inv->billedByRef->name,
+                        'username' => $inv->billedByRef->username,
+                    ] : null,
+                    'created_at'     => $inv->created_at,
+                    'updated_at'     => $inv->updated_at,
+                ];
+
+                return response()->json([
+                    'status'  => true,
+                    'message' => 'Invoice fetched successfully.',
+                    'data'    => $data,
+                ], 200);
+            }
+
+            // ---------- List with limit/offset ----------
+            $limit  = (int) $request->input('limit', 10);
+            $offset = (int) $request->input('offset', 0);
+
+            $items = InvoiceModel::with([
+                    'orderRef:id,so_no,order_no,status',
+                    'billedByRef:id,name,username',
+                ])
+                ->select('id','order','invoice_number','invoice_date','billed_by','created_at','updated_at')
+                ->orderBy('id', 'desc')
+                ->skip($offset)->take($limit)
+                ->get();
+
+            $data = $items->map(function ($inv) {
+                return [
+                    'id'             => $inv->id,
+                    'invoice_number' => $inv->invoice_number,
+                    'invoice_date'   => $inv->invoice_date,
+                    'order'          => $inv->orderRef ? [
+                        'id'       => $inv->orderRef->id,
+                        'so_no'    => $inv->orderRef->so_no,
+                        'order_no' => $inv->orderRef->order_no,
+                        'status'   => $inv->orderRef->status,
+                    ] : null,
+                    'billed_by'      => $inv->billedByRef ? [
+                        'id'       => $inv->billedByRef->id,
+                        'name'     => $inv->billedByRef->name,
+                        'username' => $inv->billedByRef->username,
+                    ] : null,
+                    'created_at'     => $inv->created_at,
+                    'updated_at'     => $inv->updated_at,
+                ];
+            });
+
+            return response()->json([
+                'status'  => true,
+                'message' => 'Invoices fetched successfully.',
+                'count'   => $data->count(),
+                'data'    => $data,
+            ], 200);
+
+        } catch (\Throwable $e) {
+            Log::error('Invoice fetch failed', [
+                'error' => $e->getMessage(),
+                'file'  => $e->getFile(),
+                'line'  => $e->getLine(),
+            ]);
+
+            return response()->json([
+                'status'  => false,
+                'message' => 'Something went wrong while fetching invoices.',
+            ], 500);
+        }
+    }
+
+    // update
+    public function update(Request $request, $id)
+    {
+        try {
+            // 1) Ensure exists
+            $inv = InvoiceModel::find($id);
+            if (! $inv) {
+                return response()->json([
+                    'status'  => false,
+                    'message' => 'Invoice not found.',
+                ], 404);
+            }
+
+            // 2) Validate
+            $request->validate([
+                'order'          => ['required','integer','exists:t_orders,id'],
+                'invoice_number' => [
+                    'required','string','max:255',
+                    Rule::unique('t_invoice','invoice_number')->ignore($id)
+                ],
+                'invoice_date'   => ['required','date'],
+                'billed_by'      => ['required','integer','exists:users,id'],
+            ]);
+
+            // 3) Update (transaction)
+            DB::transaction(function () use ($id, $request) {
+                InvoiceModel::where('id', $id)->update([
+                    'order'          => (int) $request->order,
+                    'invoice_number' => $request->invoice_number,
+                    'invoice_date'   => $request->invoice_date,
+                    'billed_by'      => (int) $request->billed_by,
+                ]);
+            });
+
+            // 4) Fresh with relations
+            $fresh = InvoiceModel::with([
+                    'orderRef:id,so_no,order_no,status',
+                    'billedByRef:id,name,username',
+                ])->find($id);
+
+            return response()->json([
+                'status'  => true,
+                'message' => 'Invoice updated successfully!',
+                'data'    => [
+                    'id'             => $fresh->id,
+                    'invoice_number' => $fresh->invoice_number,
+                    'invoice_date'   => $fresh->invoice_date,
+                    'order'          => $fresh->orderRef ? [
+                        'id'       => $fresh->orderRef->id,
+                        'so_no'    => $fresh->orderRef->so_no,
+                        'order_no' => $fresh->orderRef->order_no,
+                        'status'   => $fresh->orderRef->status,
+                    ] : null,
+                    'billed_by'      => $fresh->billedByRef ? [
+                        'id'       => $fresh->billedByRef->id,
+                        'name'     => $fresh->billedByRef->name,
+                        'username' => $fresh->billedByRef->username,
+                    ] : null,
+                    'updated_at'     => $fresh->updated_at,
+                ],
+            ], 200);
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'status'  => false,
+                'message' => 'Validation error!',
+                'errors'  => $e->errors(),
+            ], 422);
+        } catch (\Throwable $e) {
+            Log::error('Invoice update failed', [
+                'invoice_id' => $id,
+                'error' => $e->getMessage(),
+                'file'  => $e->getFile(),
+                'line'  => $e->getLine(),
+            ]);
+            return response()->json([
+                'status'  => false,
+                'message' => 'Something went wrong while updating invoice.',
+            ], 500);
+        }
+    }
+
+    // delete
+    public function delete(Request $request, $id)
+    {
+        try {
+            // 1) Load with relations for snapshot
+            $inv = InvoiceModel::with([
+                    'orderRef:id,so_no,order_no,status',
+                    'billedByRef:id,name,username',
+                ])
+                ->select('id','order','invoice_number','invoice_date','billed_by','created_at','updated_at')
+                ->find($id);
+
+            if (! $inv) {
+                return response()->json([
+                    'status'  => false,
+                    'message' => 'Invoice not found.',
+                ], 404);
+            }
+
+            // 2) Build snapshot
+            $snapshot = [
+                'id'             => $inv->id,
+                'invoice_number' => $inv->invoice_number,
+                'invoice_date'   => $inv->invoice_date,
+                'order'          => $inv->orderRef ? [
+                    'id'       => $inv->orderRef->id,
+                    'so_no'    => $inv->orderRef->so_no,
+                    'order_no' => $inv->orderRef->order_no,
+                    'status'   => $inv->orderRef->status,
+                ] : null,
+                'billed_by'      => $inv->billedByRef ? [
+                    'id'       => $inv->billedByRef->id,
+                    'name'     => $inv->billedByRef->name,
+                    'username' => $inv->billedByRef->username,
+                ] : null,
+                'created_at'     => $inv->created_at,
+                'updated_at'     => $inv->updated_at,
+            ];
+
+            // 3) Delete (transaction)
+            DB::transaction(function () use ($inv) {
+                $inv->delete();
+            });
+
+            // 4) Respond
+            return response()->json([
+                'status'  => true,
+                'message' => 'Invoice deleted successfully!',
+                'data'    => $snapshot,
+            ], 200);
+
+        } catch (\Throwable $e) {
+            Log::error('Invoice delete failed', [
+                'invoice_id' => $id,
+                'error'      => $e->getMessage(),
+                'file'       => $e->getFile(),
+                'line'       => $e->getLine(),
+            ]);
+            return response()->json([
+                'status'  => false,
+                'message' => 'Something went wrong while deleting invoice.',
+            ], 500);
+        }
+    }
 }
+
+
