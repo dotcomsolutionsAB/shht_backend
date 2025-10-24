@@ -23,6 +23,7 @@ class UserController extends Controller
             'password'      => ['required', 'string', 'min:8'], // add 'confirmed' if you pass password_confirmation
             'email'         => ['nullable', 'email', 'max:255', 'unique:users,email'],
             'role'          => ['required',Rule::in(['admin', 'sales', 'staff', 'dispatch'])],
+            'mobile'        => ['required', 'string', 'max:15'],
             'order_views'   => ['required', Rule::in(['self', 'global'])],
             'change_status' => ['required', Rule::in(['0', '1'])],
         ]);
@@ -38,6 +39,7 @@ class UserController extends Controller
                 $u->password      = Hash::make($validated['password']);
                 $u->email         = $validated['email'] ?? null;
                 $u->role          = $validated['role'];
+                $u->mobile        = $validated['mobile'];
                 $u->order_views   = $validated['order_views']   ?? 'self';
                 $u->change_status = $validated['change_status'] ?? '0';
 
@@ -57,6 +59,7 @@ class UserController extends Controller
                     'username'      => $user->username,
                     'email'         => $user->email,
                     'role'          => $user->role,
+                    'mobile'        => $user->mobile,
                     'order_views'   => $user->order_views,
                     'change_status' => $user->change_status,
                     'created_at'    => $user->created_at,
@@ -92,35 +95,55 @@ class UserController extends Controller
 
                 if (!$user) {
                     return response()->json([
+                        'code'    => 404,
                         'status'  => false,
                         'message' => 'User not found',
                     ], 404);
                 }
 
                 return response()->json([
+                    'code'    => 200,
                     'status'  => true,
                     'message' => 'User fetched successfully',
                     'data'    => $user,
                 ], 200);
             }
 
-            // --- Otherwise fetch multiple users ---
-            $limit  = $request->input('limit', 10);
-            $offset = $request->input('offset', 0);
+            // --- List all users with pagination + search ---
+            $limit  = (int) $request->input('limit', 10);
+            $offset = (int) $request->input('offset', 0);
+            $search = trim((string) $request->input('search', ''));
 
-            $users = User::select('id', 'name', 'email', 'username', 'order_views', 'change_status')
-                ->skip($offset)
-                ->take($limit)
-                ->orderBy('id', 'desc')
-                ->get();
+            // Total before filtering
+            $total = User::count();
 
+            // Query for filtered data
+            $q = User::select('id','name','email','username','mobile','order_views','change_status')
+                ->orderBy('id','desc');
+
+            if ($search !== '') {
+                $q->where(function ($w) use ($search) {
+                    $w->where('name', 'like', "%{$search}%")
+                    ->orWhere('username', 'like', "%{$search}%")
+                    ->orWhere('mobile', 'like', "%{$search}%");
+                });
+            }
+
+            $users = $q->skip($offset)->take($limit)->get();
+
+            // Count after filter
+            $count = $users->count();
+
+            // Final response
             return response()->json([
-                'status'  => true,
-                'message' => 'Users fetched successfully',
-                'count'   => $users->count(),
+                'code'    => 200,
+                'status'  => 'success',
+                'message' => 'Users retrieved successfully.',
+                'total'   => $total,
+                'count'   => $count,
                 'data'    => $users,
             ], 200);
-
+            
         } catch (\Throwable $e) {
             Log::error('Fetch Users Failed', [
                 'error' => $e->getMessage(),
@@ -144,6 +167,7 @@ class UserController extends Controller
                 'email'         => ['nullable','email','max:255',Rule::unique('users','email')->ignore($id)],
                 // 'password'      => 'required|string|min:8',
                 'username'      => ['required','string','max:255',Rule::unique('users','username')->ignore($id)],
+                'mobile'        => ['required', 'string', 'max:15'],
                 'order_views'   => ['required',Rule::in(['self','global'])],
                 'change_status' => ['required',Rule::in(['0','1'])],
             ]);
@@ -153,11 +177,12 @@ class UserController extends Controller
                 'email'         => $request->filled('email') ? strtolower($request->email) : null,
                 // 'password'      => bcrypt($request->password),
                 'username'      => $request->username,
+                'mobile'        => $request->mobile,
                 'order_views'   => $request->order_views,
                 'change_status' => $request->change_status,
             ]);
 
-            $user = User::select('id','name','email','username','order_views','change_status','updated_at')
+            $user = User::select('id','name','email','username','mobile','order_views','change_status','updated_at')
                         ->find($id);
 
             return response()->json([

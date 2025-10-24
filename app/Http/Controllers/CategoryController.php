@@ -68,31 +68,43 @@ class CategoryController extends Controller
 
                 if (! $category) {
                     return response()->json([
+                        'code'    => 404,
                         'status'  => false,
                         'message' => 'Category not found.',
                     ], 404);
                 }
 
                 return response()->json([
+                    'code'    => 200,
                     'status'  => true,
                     'message' => 'Category fetched successfully.',
                     'data'    => $category,
                 ], 200);
             }
 
-            // Else → fetch multiple categories with limit/offset
+            // ---------- Fetch multiple categories ----------
             $limit  = (int) $request->input('limit', 10);
             $offset = (int) $request->input('offset', 0);
+            $search = trim((string) $request->input('search', ''));
 
-            $categories = CategoryModel::select('id', 'name')
-                ->orderBy('id', 'desc')
-                ->skip($offset)
-                ->take($limit)
-                ->get();
+            // Total before filter
+            $total = CategoryModel::count();
+
+            // Build query
+            $query = CategoryModel::select('id', 'name')->orderBy('id', 'desc');
+
+            if ($search !== '') {
+                $query->where('name', 'like', "%{$search}%");
+            }
+
+            // Apply pagination
+            $categories = $query->skip($offset)->take($limit)->get();
 
             return response()->json([
-                'status'  => true,
-                'message' => 'Categories fetched successfully.',
+                'code'    => 200,
+                'status'  => 'success',
+                'message' => 'Categories retrieved successfully.',
+                'total'   => $total,
                 'count'   => $categories->count(),
                 'data'    => $categories,
             ], 200);
@@ -105,6 +117,7 @@ class CategoryController extends Controller
             ]);
 
             return response()->json([
+                'code'    => 500,
                 'status'  => false,
                 'message' => 'Something went wrong while fetching categories.',
             ], 500);

@@ -78,22 +78,29 @@ class SubCategoryController extends Controller
                 ], 200);
             }
 
-            // List with limit/offset and optional category filter
+            // ---------- List with filters ----------
             $limit    = (int) $request->input('limit', 10);
             $offset   = (int) $request->input('offset', 0);
-            $category = $request->input('category'); // optional filter (id)
+            $category = $request->input('category');           // optional: id
+            $search   = trim((string) $request->input('search','')); // optional: name search
+
+            // Total BEFORE any filters
+            $total = SubCategoryModel::count();
 
             $query = SubCategoryModel::with(['categoryRef:id,name'])
-                ->select('id','category','name') // use 'category_id' if applicable
+                ->select('id','category','name') // or 'category_id'
                 ->orderBy('id','desc');
 
             if ($category !== null) {
                 $query->where('category', (int) $category); // or 'category_id'
             }
 
+            if ($search !== '') {
+                $query->where('name', 'like', "%{$search}%");
+            }
+
             $items = $query->skip($offset)->take($limit)->get();
 
-            // Map to desired shape
             $data = $items->map(function ($sub) {
                 return [
                     'id'       => $sub->id,
@@ -104,12 +111,14 @@ class SubCategoryController extends Controller
                 ];
             });
 
-            return response()->json([
-                'status'  => true,
-                'message' => 'Sub-categories fetched successfully',
-                'count'   => $data->count(),
-                'data'    => $data,
-            ], 200);
+        return response()->json([
+            'code'    => 200,
+            'status'  => 'success',
+            'message' => 'Sub-categories retrieved successfully.',
+            'total'   => $total,           // before filters
+            'count'   => $data->count(),   // after filters + pagination
+            'data'    => $data,
+        ], 200);
 
         } catch (\Throwable $e) {
             \Log::error('SubCategory fetch failed', ['err'=>$e->getMessage()]);
