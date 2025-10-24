@@ -1,7 +1,7 @@
 <?php
 
 namespace App\Http\Controllers;
-use App\Models\OrderModel;
+use App\Models\OrdersModel;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -49,7 +49,7 @@ class OrdersController extends Controller
                 $counter = $this->counter->getOrIncrementForCompany($request->company);
 
                 // Persist order
-                return OrderModel::create([
+                return OrdersModel::create([
                     'company'               => $request->company,
                     'client'                => (int) $request->client,
                     'client_contact_person' => (int) $request->client_contact_person,
@@ -122,7 +122,7 @@ class OrdersController extends Controller
         try {
             // ---------- single order by id ----------
             if ($id !== null) {
-                $o = OrderModel::with([
+                $o = OrdersModel::with([
                         'clientRef:id,name',
                         'contactRef:id,client,name,designation,mobile,email',
                         'initiatedByRef:id,name,username',
@@ -189,7 +189,7 @@ class OrdersController extends Controller
             $dateFrom  = $request->input('date_from'); // optional: filter by order_date
             $dateTo    = $request->input('date_to');   // optional
 
-            $q = OrderModel::with([
+            $q = OrdersModel::with([
                     'clientRef:id,name',
                     'contactRef:id,client,name,designation,mobile,email',
                     'initiatedByRef:id,name,username',
@@ -276,7 +276,7 @@ class OrdersController extends Controller
     {
         try {
             // 1️⃣ Find the order
-            $order = OrderModel::find($id);
+            $order = OrdersModel::find($id);
             if (! $order) {
                 return response()->json([
                     'status'  => false,
@@ -329,11 +329,11 @@ class OrdersController extends Controller
             ];
 
             DB::transaction(function () use ($id, $payload) {
-                OrderModel::where('id', $id)->update($payload);
+                OrdersModel::where('id', $id)->update($payload);
             });
 
             // 4️⃣ Fetch updated record with relations
-            $fresh = OrderModel::with([
+            $fresh = OrdersModel::with([
                 'clientRef:id,name',
                 'contactRef:id,name,mobile,email,designation',
                 'initiatedByRef:id,name,username',
@@ -393,7 +393,7 @@ class OrdersController extends Controller
     {
         try {
             // 1) Load with related objects for a good snapshot
-            $o = OrderModel::with([
+            $o = OrdersModel::with([
                     'clientRef:id,name',
                     'contactRef:id,client,name,designation,mobile,email',
                     'initiatedByRef:id,name,username',
