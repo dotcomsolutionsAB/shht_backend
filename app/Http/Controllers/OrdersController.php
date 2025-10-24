@@ -178,6 +178,7 @@ class OrdersController extends Controller
                 ];
 
                 return response()->json([
+                    'code'    => 200,
                     'status'  => true,
                     'message' => 'Order fetched successfully.',
                     'data'    => $data,
@@ -185,12 +186,18 @@ class OrdersController extends Controller
             }
 
             // ---------- list with limit/offset + optional filters ----------
-            $limit     = (int) $request->input('limit', 10);
-            $offset    = (int) $request->input('offset', 0);
-            $company   = $request->input('company'); // optional: SHHT / SHAPN
-            $status    = $request->input('status');  // optional
-            $dateFrom  = $request->input('date_from'); // optional: filter by order_date
-            $dateTo    = $request->input('date_to');   // optional
+            $limit         = (int) $request->input('limit', 10);
+            $offset        = (int) $request->input('offset', 0);
+            $search        = trim((string) $request->input('search', ''));     // so_no or order_no
+            $client        = $request->input('client');                         // id
+            $status        = $request->input('status');                         // enum
+            $checkedBy     = $request->input('checked_by');                     // user id
+            $dispatchedBy  = $request->input('dispatched_by');                  // user id
+            $dateFrom      = $request->input('date_from');                      // YYYY-MM-DD
+            $dateTo        = $request->input('date_to');                        // YYYY-MM-DD
+
+            // Total BEFORE any filters (as you requested)
+            $total = OrdersModel::count();
 
             $q = OrdersModel::with([
                     'clientRef:id,name',
@@ -208,11 +215,24 @@ class OrdersController extends Controller
                 )
                 ->orderBy('id','desc');
 
-            if (!empty($company)) {
-                $q->where('company', strtoupper($company));
+            // ----- Filters (all optional) -----
+            if ($search !== '') {
+                $q->where(function ($w) use ($search) {
+                    $w->where('so_no', 'like', "%{$search}%")
+                    ->orWhere('order_no', 'like', "%{$search}%");
+                });
+            }
+            if (!empty($client)) {
+                $q->where('client', (int) $client);
             }
             if (!empty($status)) {
                 $q->where('status', $status);
+            }
+            if (!empty($checkedBy)) {
+                $q->where('checked_by', (int) $checkedBy);
+            }
+            if (!empty($dispatchedBy)) {
+                $q->where('dispatched_by', (int) $dispatchedBy);
             }
             if (!empty($dateFrom)) {
                 $q->whereDate('order_date', '>=', $dateFrom);
@@ -221,8 +241,11 @@ class OrdersController extends Controller
                 $q->whereDate('order_date', '<=', $dateTo);
             }
 
+            // Paginate
             $items = $q->skip($offset)->take($limit)->get();
+            $count = $items->count(); // how many returned after filters (and paging)
 
+            // Map payload
             $data = $items->map(function ($o) {
                 return [
                     'id'        => $o->id,
@@ -254,11 +277,13 @@ class OrdersController extends Controller
             });
 
             return response()->json([
-                'status'  => true,
-                'message' => 'Orders fetched successfully.',
-                'count'   => $data->count(),
-                'data'    => $data,
-            ], 200);
+            'code'    => 200,
+            'status'  => 'success',
+            'message' => 'Orders retrieved successfully.',
+            'total'   => $total,      // before filters
+            'count'   => $count,      // after filters (and pagination)
+            'data'    => $data,
+        ], 200);
 
         } catch (\Throwable $e) {
             Log::error('Order fetch failed', [
