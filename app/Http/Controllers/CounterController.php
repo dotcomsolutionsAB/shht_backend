@@ -94,9 +94,9 @@ class CounterController extends Controller
     }
 
     /**
-     * Update counter (all fields required, as requested)
+     * Edit counter (all fields required, as requested)
      */
-    public function update(Request $request, $id)
+    public function edit(Request $request, $id)
     {
         try {
             $request->validate([

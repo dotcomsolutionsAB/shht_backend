@@ -87,9 +87,9 @@ class TagsController extends Controller
     }
 
     /**
-     * Update tag (unique name but ignore current row)
+     * Edit tag (unique name but ignore current row)
      */
-    public function update(Request $request, $id)
+    public function edit(Request $request, $id)
     {
         try {
             $request->validate([

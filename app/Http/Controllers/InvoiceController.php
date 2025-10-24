@@ -187,8 +187,8 @@ class InvoiceController extends Controller
         }
     }
 
-    // update
-    public function update(Request $request, $id)
+    // edit
+    public function edit(Request $request, $id)
     {
         try {
             // 1) Ensure exists
@@ -211,7 +211,7 @@ class InvoiceController extends Controller
                 'billed_by'      => ['required','integer','exists:users,id'],
             ]);
 
-            // 3) Update (transaction)
+            // 3) Edit (transaction)
             DB::transaction(function () use ($id, $request) {
                 InvoiceModel::where('id', $id)->update([
                     'order'          => (int) $request->order,

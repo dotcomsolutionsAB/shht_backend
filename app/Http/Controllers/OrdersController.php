@@ -271,8 +271,8 @@ class OrdersController extends Controller
         }
     }
 
-    // update
-    public function update(Request $request, $id)
+    // edit
+    public function edit(Request $request, $id)
     {
         try {
             // 1️⃣ Find the order

@@ -214,8 +214,8 @@ class ClientsController extends Controller
         }
     }
 
-    // update
-    public function update(Request $request, $id)
+    // edit
+    public function edit(Request $request, $id)
     {
         try {
             // Step 1: Find existing record

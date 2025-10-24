@@ -133,7 +133,8 @@ class UserController extends Controller
         }
     }
 
-    public function update(Request $request, $id)
+    // Edit
+    public function edit(Request $request, $id)
     {
         try {
             $request->validate([
@@ -181,6 +182,7 @@ class UserController extends Controller
         }
     }
 
+    // Delete
     public function delete($id)
     {
         try {

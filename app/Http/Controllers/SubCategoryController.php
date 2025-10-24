@@ -121,9 +121,9 @@ class SubCategoryController extends Controller
 
 
     /**
-     * Update sub-category (unique name within same category, ignoring current row).
+     * Edit sub-category (unique name within same category, ignoring current row).
      */
-    public function update(Request $request, $id)
+    public function edit(Request $request, $id)
     {
         try {
             $request->validate([

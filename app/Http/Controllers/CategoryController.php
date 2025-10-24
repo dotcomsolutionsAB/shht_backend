@@ -108,8 +108,8 @@ class CategoryController extends Controller
         }
     }
 
-    // update
-    public function update(Request $request, $id)
+    // edit
+    public function edit(Request $request, $id)
     {
         try {
             // Validate: keep name required, unique but ignore current row
