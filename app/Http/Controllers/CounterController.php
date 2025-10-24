@@ -184,7 +184,7 @@ class CounterController extends Controller
     // helper function
     public function getOrIncrementForCompany(string $company): array
     {
-        $company  = strtoupper(trim($company));  // SHHT / SHAPN
+        $company  = strtoupper(trim($company));  // SHHT / SHAPL
         $prefix   = $company;
 
         // Use Jan–Dec current year format like "25"

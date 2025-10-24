@@ -18,7 +18,7 @@ class OrdersController extends Controller
         try {
             // 1) Validate request
             $request->validate([
-                'company'                => ['required', Rule::in(['SHHT','SHAPN'])],
+                'company'                => ['required', Rule::in(['SHHT','SHAPL'])],
                 'client'                 => ['required','integer','exists:t_clients,id'],
                 'client_contact_person'  => ['required','integer','exists:t_clients_contact_person,id'],
 
@@ -315,7 +315,7 @@ class OrdersController extends Controller
 
             // 2️⃣ Validate input
             $request->validate([
-                'company'               => ['required', Rule::in(['SHHT', 'SHAPN'])],
+                'company'               => ['required', Rule::in(['SHHT', 'SHAPL'])],
                 'client'                => ['required', 'integer', 'exists:t_clients,id'],
                 'client_contact_person' => ['required', 'integer', 'exists:t_clients_contact_person,id'],
                 'so_date'               => ['required', 'date'],

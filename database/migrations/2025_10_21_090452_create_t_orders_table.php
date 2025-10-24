@@ -16,7 +16,7 @@ return new class extends Migration
             // Client and related info
             $table->enum('company', [
                 'SHHT',
-                'SHAPN'
+                'SHAPL'
             ]);
             $table->unsignedBigInteger('client');
             $table->unsignedBigInteger('client_contact_person');
