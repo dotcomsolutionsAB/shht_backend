@@ -80,7 +80,7 @@ class ClientContactPersonController extends Controller
     }
 
     // fetch
-    public function list(Request $request, $id = null)
+    public function fetch(Request $request, $id = null)
     {
         try {
             // ---------- Fetch single by ID ----------
