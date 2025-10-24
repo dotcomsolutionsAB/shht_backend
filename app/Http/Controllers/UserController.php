@@ -48,6 +48,7 @@ class UserController extends Controller
 
             // 3) Return a safe payload (never return password)
             return response()->json([
+                'code'    => 201,
                 'status'  => true,
                 'message' => 'User created successfully.',
                 'data'    => [
@@ -70,6 +71,7 @@ class UserController extends Controller
             ]);
 
             return response()->json([
+                'code'    => 500,
                 'status'  => false,
                 'message' => 'Failed to create user.',
             ], 500);

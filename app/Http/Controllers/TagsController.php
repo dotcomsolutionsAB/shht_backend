@@ -27,6 +27,7 @@ class TagsController extends Controller
             });
 
             return response()->json([
+                'code'    => 201,
                 'status'  => true,
                 'message' => 'Tag created successfully!',
                 'data'    => ['id' => $tag->id, 'name' => $tag->name],
@@ -34,12 +35,12 @@ class TagsController extends Controller
 
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json([
-                'status' => false, 'message' => 'Validation error!', 'errors' => $e->errors(),
+                'code' => 422,'status' => false, 'message' => 'Validation error!', 'errors' => $e->errors(),
             ], 422);
         } catch (\Throwable $e) {
             Log::error('Tag create failed', ['err' => $e->getMessage()]);
             return response()->json([
-                'status' => false, 'message' => 'Something went wrong while creating tag!',
+                'code' => 500,'status' => false, 'message' => 'Something went wrong while creating tag!',
             ], 500);
         }
     }
@@ -103,6 +104,7 @@ class TagsController extends Controller
             $tag = TagsModel::select('id','name')->find($id);
 
             return response()->json([
+                'code'    => 200,
                 'status'  => true,
                 'message' => $updated ? 'Tag updated successfully!' : 'No changes detected.',
                 'data'    => $tag,
@@ -110,12 +112,12 @@ class TagsController extends Controller
 
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json([
-                'status' => false, 'message' => 'Validation error!', 'errors' => $e->errors(),
+                'code' => 422,'status' => false, 'message' => 'Validation error!', 'errors' => $e->errors(),
             ], 422);
         } catch (\Throwable $e) {
             Log::error('Tag update failed', ['id' => $id, 'err' => $e->getMessage()]);
             return response()->json([
-                'status' => false, 'message' => 'Something went wrong while updating tag.',
+                'code' => 500,'status' => false, 'message' => 'Something went wrong while updating tag.',
             ], 500);
         }
     }
@@ -129,13 +131,14 @@ class TagsController extends Controller
             $tag = TagsModel::find($id);
             if (! $tag) {
                 return response()->json([
-                    'status' => false, 'message' => 'Tag not found.',
+                    'code' => 404,'status' => false, 'message' => 'Tag not found.',
                 ], 404);
             }
 
             $tag->delete();
 
             return response()->json([
+                'code'    => 200,
                 'status'  => true,
                 'message' => 'Tag deleted successfully!',
                 'data'    => ['id' => $id, 'name' => $tag->name],
@@ -144,7 +147,7 @@ class TagsController extends Controller
         } catch (\Throwable $e) {
             Log::error('Tag delete failed', ['id' => $id, 'err' => $e->getMessage()]);
             return response()->json([
-                'status' => false, 'message' => 'Something went wrong while deleting tag.',
+                'code' => 500,'status' => false, 'message' => 'Something went wrong while deleting tag.',
             ], 500);
         }
     }

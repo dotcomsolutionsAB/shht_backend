@@ -33,16 +33,17 @@ class SubCategoryController extends Controller
             });
 
             return response()->json([
+                'code'    => 201,
                 'status'  => true,
                 'message' => 'Sub-category created successfully!',
                 'data'    => ['id'=>$sub->id, 'category'=>$sub->category, 'name'=>$sub->name],
             ], 201);
 
         } catch (\Illuminate\Validation\ValidationException $e) {
-            return response()->json(['status'=>false,'message'=>'Validation error','errors'=>$e->errors()], 422);
+            return response()->json(['code'=>422,'status'=>false,'message'=>'Validation error','errors'=>$e->errors()], 422);
         } catch (\Throwable $e) {
             Log::error('SubCategory create failed', ['err'=>$e->getMessage()]);
-            return response()->json(['status'=>false,'message'=>'Something went wrong while creating sub-category'], 500);
+            return response()->json(['code'=>500,'status'=>false,'message'=>'Something went wrong while creating sub-category'], 500);
         }
     }
 
@@ -144,16 +145,17 @@ class SubCategoryController extends Controller
             $sub = SubCategoryModel::select('id','category','name')->find($id);
 
             return response()->json([
+                'code'    => 200,
                 'status'  => true,
                 'message' => $updated ? 'Sub-category updated successfully!' : 'No changes detected.',
                 'data'    => $sub,
             ], 200);
 
         } catch (\Illuminate\Validation\ValidationException $e) {
-            return response()->json(['status'=>false,'message'=>'Validation error','errors'=>$e->errors()], 422);
+            return response()->json(['code'=> 422,'status'=>false,'message'=>'Validation error','errors'=>$e->errors()], 422);
         } catch (\Throwable $e) {
             Log::error('SubCategory update failed', ['id'=>$id, 'err'=>$e->getMessage()]);
-            return response()->json(['status'=>false,'message'=>'Something went wrong while updating sub-category'], 500);
+            return response()->json(['code'=> 500,'status'=>false,'message'=>'Something went wrong while updating sub-category'], 500);
         }
     }
 
@@ -165,12 +167,13 @@ class SubCategoryController extends Controller
         try {
             $sub = SubCategoryModel::find($id);
             if (! $sub) {
-                return response()->json(['status'=>false,'message'=>'Sub-category not found'], 404);
+                return response()->json(['code'=>404,'status'=>false,'message'=>'Sub-category not found'], 404);
             }
 
             $sub->delete();
 
             return response()->json([
+                'code'    => 200,
                 'status'  => true,
                 'message' => 'Sub-category deleted successfully!',
                 'data'    => ['id'=>$id, 'name'=>$sub->name, 'category'=>$sub->category],
@@ -178,7 +181,7 @@ class SubCategoryController extends Controller
 
         } catch (\Throwable $e) {
             Log::error('SubCategory delete failed', ['id'=>$id,'err'=>$e->getMessage()]);
-            return response()->json(['status'=>false,'message'=>'Something went wrong while deleting sub-category'], 500);
+            return response()->json(['code'=>500,'status'=>false,'message'=>'Something went wrong while deleting sub-category'], 500);
         }
     }
 }

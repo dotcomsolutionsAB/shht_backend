@@ -335,6 +335,7 @@ class ClientsController extends Controller
 
             if (! $client) {
                 return response()->json([
+                    'code'    => 404,
                     'status'  => false,
                     'message' => 'Client not found.',
                 ], 404);
@@ -377,6 +378,7 @@ class ClientsController extends Controller
             $client->delete();
 
             return response()->json([
+                'code'    => 200,
                 'status'  => true,
                 'message' => 'Client deleted successfully!',
                 'data'    => $snapshot,
@@ -391,6 +393,7 @@ class ClientsController extends Controller
             ]);
 
             return response()->json([
+                'code'    => 500,
                 'status'  => false,
                 'message' => 'Something went wrong while deleting client.',
             ], 500);

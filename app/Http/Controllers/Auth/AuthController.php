@@ -21,6 +21,7 @@ class AuthController extends Controller
             // Attempt login using the username column
             if (! Auth::attempt(['username' => $request->username, 'password' => $request->password])) {
                 return response()->json([
+                    'code'    => 401,
                     'success' => false,
                     'message' => 'Invalid Username or Password.',
                 ], 401);
@@ -33,6 +34,7 @@ class AuthController extends Controller
                 'success' => true,
                 'message' => 'User logged in successfully!',
                 'data' => [
+                    'code'        => 200,
                     'token'       => $token,
                     'user_id'     => $user->id,
                     'name'        => $user->name,
@@ -50,6 +52,7 @@ class AuthController extends Controller
             ]);
 
             return response()->json([
+                'code'    => 500,
                 'success' => false,
                 'message' => 'Something went wrong.',
                 'error'   => $e->getMessage(),
@@ -64,6 +67,7 @@ class AuthController extends Controller
             // Ensure an authenticated user exists
             if (! $request->user()) {
                 return response()->json([
+                    'code'    => 401,
                     'success' => false,
                     'message' => 'Sorry, no user is logged in now!',
                 ], 401);
@@ -73,6 +77,7 @@ class AuthController extends Controller
             $request->user()->currentAccessToken()->delete();
 
             return response()->json([
+                'code'    => 200,
                 'success' => true,
                 'message' => 'Logged out successfully!',
             ], 200);
@@ -85,6 +90,7 @@ class AuthController extends Controller
             ]);
 
             return response()->json([
+                'code'    => 500,
                 'success' => false,
                 'message' => 'Something went wrong during logout!',
                 'error'   => $e->getMessage(),

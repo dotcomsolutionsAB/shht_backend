@@ -41,6 +41,7 @@ class InvoiceController extends Controller
 
             // 4️⃣ Build response
             return response()->json([
+                'code'    => 201,
                 'status'  => true,
                 'message' => 'Invoice created successfully!',
                 'data'    => [
@@ -228,6 +229,7 @@ class InvoiceController extends Controller
                 ])->find($id);
 
             return response()->json([
+                'code'    => 200,
                 'status'  => true,
                 'message' => 'Invoice updated successfully!',
                 'data'    => [
@@ -251,6 +253,7 @@ class InvoiceController extends Controller
 
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json([
+                'code'    => 422,
                 'status'  => false,
                 'message' => 'Validation error!',
                 'errors'  => $e->errors(),
@@ -263,6 +266,7 @@ class InvoiceController extends Controller
                 'line'  => $e->getLine(),
             ]);
             return response()->json([
+                'code'    => 500,
                 'status'  => false,
                 'message' => 'Something went wrong while updating invoice.',
             ], 500);
@@ -283,6 +287,7 @@ class InvoiceController extends Controller
 
             if (! $inv) {
                 return response()->json([
+                    'code'    => 404,
                     'status'  => false,
                     'message' => 'Invoice not found.',
                 ], 404);
@@ -315,6 +320,7 @@ class InvoiceController extends Controller
 
             // 4) Respond
             return response()->json([
+                'code'    => 200,
                 'status'  => true,
                 'message' => 'Invoice deleted successfully!',
                 'data'    => $snapshot,
@@ -322,12 +328,14 @@ class InvoiceController extends Controller
 
         } catch (\Throwable $e) {
             Log::error('Invoice delete failed', [
+                'code'       => 500,
                 'invoice_id' => $id,
                 'error'      => $e->getMessage(),
                 'file'       => $e->getFile(),
                 'line'       => $e->getLine(),
             ]);
             return response()->json([
+                'code'    => 500,
                 'status'  => false,
                 'message' => 'Something went wrong while deleting invoice.',
             ], 500);

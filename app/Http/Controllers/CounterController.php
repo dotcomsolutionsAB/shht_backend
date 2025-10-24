@@ -30,6 +30,7 @@ class CounterController extends Controller
             });
 
             return response()->json([
+                'code'    => 201,
                 'status'  => true,
                 'message' => 'Counter created successfully!',
                 'data'    => [
@@ -42,12 +43,12 @@ class CounterController extends Controller
 
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json([
-                'status' => false, 'message' => 'Validation error!', 'errors' => $e->errors(),
+                'code' => 422,'status' => false, 'message' => 'Validation error!', 'errors' => $e->errors(),
             ], 422);
         } catch (\Throwable $e) {
             Log::error('Counter create failed', ['err'=>$e->getMessage()]);
             return response()->json([
-                'status' => false, 'message' => 'Something went wrong while creating counter!',
+                'code' => 500,'status' => false, 'message' => 'Something went wrong while creating counter!',
             ], 500);
         }
     }
@@ -108,6 +109,7 @@ class CounterController extends Controller
             $exists = CounterModel::where('id', $id)->exists();
             if (! $exists) {
                 return response()->json([
+                    'code'    => 404,
                     'status'  => false,
                     'message' => 'Counter not found.',
                 ], 404);
@@ -122,6 +124,7 @@ class CounterController extends Controller
             $fresh = CounterModel::select('id','number','prefix','postfix')->find($id);
 
             return response()->json([
+                'code'    => 200,
                 'status'  => true,
                 'message' => $updated ? 'Counter updated successfully!' : 'No changes detected.',
                 'data'    => $fresh,
@@ -129,14 +132,14 @@ class CounterController extends Controller
 
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json([
-                'status' => false, 'message' => 'Validation error!', 'errors' => $e->errors(),
+                'code' => 422,'status' => false, 'message' => 'Validation error!', 'errors' => $e->errors(),
             ], 422);
         } catch (\Throwable $e) {
             Log::error('Counter update failed', [
                 'id'=>$id, 'err'=>$e->getMessage()
             ]);
             return response()->json([
-                'status' => false, 'message' => 'Something went wrong while updating counter.',
+                'code' => 500,'status' => false, 'message' => 'Something went wrong while updating counter.',
             ], 500);
         }
     }
@@ -151,6 +154,7 @@ class CounterController extends Controller
 
             if (! $counter) {
                 return response()->json([
+                    'code'    => 404,
                     'status'  => false,
                     'message' => 'Counter not found.',
                 ], 404);
@@ -160,6 +164,7 @@ class CounterController extends Controller
             $counter->delete();
 
             return response()->json([
+                'code'    => 200,
                 'status'  => true,
                 'message' => 'Counter deleted successfully!',
                 'data'    => $snapshot,
@@ -170,7 +175,7 @@ class CounterController extends Controller
                 'id'=>$id, 'err'=>$e->getMessage()
             ]);
             return response()->json([
-                'status' => false, 'message' => 'Something went wrong while deleting counter.',
+                'code' => 500,'status' => false, 'message' => 'Something went wrong while deleting counter.',
             ], 500);
         }
     }

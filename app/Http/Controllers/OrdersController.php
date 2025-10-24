@@ -74,6 +74,7 @@ class OrdersController extends Controller
 
             // 3) Success response
             return response()->json([
+                'code'    => 201,
                 'status'  => true,
                 'message' => 'Order created successfully!',
                 'data'    => [
@@ -97,6 +98,7 @@ class OrdersController extends Controller
 
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json([
+                'code'    => 422,
                 'status'  => false,
                 'message' => 'Validation error!',
                 'errors'  => $e->errors(),
@@ -110,6 +112,7 @@ class OrdersController extends Controller
             ]);
 
             return response()->json([
+                'code'    => 500,
                 'status'  => false,
                 'message' => 'Something went wrong while creating order!',
             ], 500);
@@ -279,6 +282,7 @@ class OrdersController extends Controller
             $order = OrdersModel::find($id);
             if (! $order) {
                 return response()->json([
+                    'code'    => 404,
                     'status'  => false,
                     'message' => 'Order not found.',
                 ], 404);
@@ -342,6 +346,7 @@ class OrdersController extends Controller
             ])->find($id);
 
             return response()->json([
+                'code'    => 200,
                 'status'  => true,
                 'message' => 'Order updated successfully!',
                 'data'    => [
@@ -369,6 +374,7 @@ class OrdersController extends Controller
 
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json([
+                'code'    => 422,
                 'status'  => false,
                 'message' => 'Validation error!',
                 'errors'  => $e->errors(),
@@ -382,6 +388,7 @@ class OrdersController extends Controller
             ]);
 
             return response()->json([
+                'code'    => 500,
                 'status'  => false,
                 'message' => 'Something went wrong while updating order.',
             ], 500);
@@ -457,6 +464,7 @@ class OrdersController extends Controller
 
             // 4) Respond
             return response()->json([
+                'code'    => 200,
                 'status'  => true,
                 'message' => 'Order deleted successfully!',
                 'data'    => $snapshot,
@@ -470,6 +478,7 @@ class OrdersController extends Controller
                 'line'     => $e->getLine(),
             ]);
             return response()->json([
+                'code'    => 500,
                 'status'  => false,
                 'message' => 'Something went wrong while deleting order.',
             ], 500);

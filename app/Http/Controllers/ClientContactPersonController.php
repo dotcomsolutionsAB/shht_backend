@@ -28,6 +28,7 @@ class ClientContactPersonController extends Controller
                 empty($request->input('email'))
             ) {
                 return response()->json([
+                    'code'    => 422,
                     'status'  => false,
                     'message' => 'At least one of designation, mobile, or email must be provided.',
                 ], 422);
@@ -46,6 +47,7 @@ class ClientContactPersonController extends Controller
 
             // Step 4️⃣: Clean success response
             return response()->json([
+                'code'    => 201,
                 'status'  => true,
                 'message' => 'Client contact person created successfully!',
                 'data'    => [
@@ -60,6 +62,7 @@ class ClientContactPersonController extends Controller
 
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json([
+                'code'    => 422,
                 'status'  => false,
                 'message' => 'Validation error!',
                 'errors'  => $e->errors(),
@@ -73,6 +76,7 @@ class ClientContactPersonController extends Controller
             ]);
 
             return response()->json([
+                'code'    => 500,
                 'status'  => false,
                 'message' => 'Something went wrong while creating contact person!',
             ], 500);
@@ -171,6 +175,7 @@ class ClientContactPersonController extends Controller
             $cp = ClientsContactPersonModel::find($id);
             if (! $cp) {
                 return response()->json([
+                    'code'    => 404,
                     'status'  => false,
                     'message' => 'Contact person not found.',
                 ], 404);
@@ -192,6 +197,7 @@ class ClientContactPersonController extends Controller
                 ! $request->filled('email')
             ) {
                 return response()->json([
+                    'code'    => 422,
                     'status'  => false,
                     'message' => 'Provide at least one of: designation, mobile, or email in the request.',
                 ], 422);
@@ -227,6 +233,7 @@ class ClientContactPersonController extends Controller
             ];
 
             return response()->json([
+                'code'    => 200,
                 'status'  => true,
                 'message' => 'Contact person updated successfully!',
                 'data'    => $data,
@@ -247,6 +254,7 @@ class ClientContactPersonController extends Controller
             ]);
 
             return response()->json([
+                'code'    => 500,
                 'status'  => false,
                 'message' => 'Something went wrong while updating contact person.',
             ], 500);
@@ -264,6 +272,7 @@ class ClientContactPersonController extends Controller
 
             if (! $cp) {
                 return response()->json([
+                    'code'    => 404,
                     'status'  => false,
                     'message' => 'Contact person not found.',
                 ], 404);
@@ -288,6 +297,7 @@ class ClientContactPersonController extends Controller
 
             // 4️⃣ Return response
             return response()->json([
+                'code'    => 200,
                 'status'  => true,
                 'message' => 'Contact person deleted successfully!',
                 'data'    => $snapshot,
@@ -302,11 +312,10 @@ class ClientContactPersonController extends Controller
             ]);
 
             return response()->json([
+                'code'    => 500,
                 'status'  => false,
                 'message' => 'Something went wrong while deleting contact person.',
             ], 500);
         }
     }
-
-
 }

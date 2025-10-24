@@ -27,6 +27,7 @@ class CategoryController extends Controller
 
             // 3) Success response
             return response()->json([
+                'code'    => 201,
                 'status'  => true,
                 'message' => 'Category created successfully!',
                 'data'    => [
@@ -37,6 +38,7 @@ class CategoryController extends Controller
 
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json([
+                'code'    => 422,
                 'status'  => false,
                 'message' => 'Validation error!',
                 'errors'  => $e->errors(),
@@ -49,6 +51,7 @@ class CategoryController extends Controller
             ]);
 
             return response()->json([
+                'code'    => 500,
                 'status'  => false,
                 'message' => 'Something went wrong while creating category!',
             ], 500);
@@ -126,6 +129,7 @@ class CategoryController extends Controller
             $category = CategoryModel::select('id','name')->find($id);
 
             return response()->json([
+                'code'    => 200,
                 'status'  => true,
                 'message' => $updated ? 'Category updated successfully!' : 'No changes detected.',
                 'data'    => $category,
@@ -133,6 +137,7 @@ class CategoryController extends Controller
 
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json([
+                'code'    => 422,
                 'status'  => false,
                 'message' => 'Validation error!',
                 'errors'  => $e->errors(),
@@ -146,6 +151,7 @@ class CategoryController extends Controller
             ]);
 
             return response()->json([
+                'code'    => 500,
                 'status'  => false,
                 'message' => 'Something went wrong while updating category!',
             ], 500);
@@ -161,6 +167,7 @@ class CategoryController extends Controller
 
             if (! $category) {
                 return response()->json([
+                    'code'    => 404,
                     'status'  => false,
                     'message' => 'Category not found!',
                 ], 404);
@@ -170,6 +177,7 @@ class CategoryController extends Controller
             $category->delete();
 
             return response()->json([
+                'code'    => 200,
                 'status'  => true,
                 'message' => 'Category deleted successfully!',
                 'data'    => [
@@ -187,6 +195,7 @@ class CategoryController extends Controller
             ]);
 
             return response()->json([
+                'code'    => 500,
                 'status'  => false,
                 'message' => 'Something went wrong while deleting category!',
                 'error'   => $e->getMessage(),
