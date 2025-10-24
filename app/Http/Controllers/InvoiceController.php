@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 use App\Models\InvoiceModel;     // t_invoice
 use App\Models\User;
-use App\Models\OrderModel;
+use App\Models\OrdersModel;
 use Illuminate\Http\Request;
 
 class InvoiceController extends Controller

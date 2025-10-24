@@ -13,7 +13,7 @@ class InvoiceModel extends Model
     // Relationships
     public function orderRef()
     {
-        return $this->belongsTo(OrderModel::class, 'order');
+        return $this->belongsTo(OrdersModel::class, 'order');
     }
 
     public function billedByRef()
