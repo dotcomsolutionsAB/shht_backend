@@ -88,15 +88,22 @@ class SubCategoryController extends Controller
             $total = SubCategoryModel::count();
 
             $query = SubCategoryModel::with(['categoryRef:id,name'])
-                ->select('id','category','name') // or 'category_id'
+                ->select('id','category','name') // use 'category_id' if that's your column
                 ->orderBy('id','desc');
 
-            if ($category !== null) {
+            // Filter by category id (exact match)
+            if (!is_null($category) && $category !== '') {
                 $query->where('category', (int) $category); // or 'category_id'
             }
 
+            // Smart search: match sub-category name OR parent category name
             if ($search !== '') {
-                $query->where('name', 'like', "%{$search}%");
+                $query->where(function ($w) use ($search) {
+                    $w->where('name', 'like', "%{$search}%")                             // sub-category name
+                    ->orWhereHas('categoryRef', function ($cw) use ($search) {         // parent category name
+                        $cw->where('name', 'like', "%{$search}%");
+                    });
+                });
             }
 
             $items = $query->skip($offset)->take($limit)->get();

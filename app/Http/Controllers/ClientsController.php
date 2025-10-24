@@ -91,6 +91,7 @@ class ClientsController extends Controller
 
                 if (! $client) {
                     return response()->json([
+                        'code'    => 404,
                         'status'  => false,
                         'message' => 'Client not found.',
                     ], 404);
@@ -126,28 +127,65 @@ class ClientsController extends Controller
                 ];
 
                 return response()->json([
+                    'code'    => 200,
                     'status'  => true,
                     'message' => 'Client fetched successfully.',
                     'data'    => $data,
                 ], 200);
             }
 
-            // ---------- List (limit/offset) ----------
-            $limit  = (int) $request->input('limit', 10);
-            $offset = (int) $request->input('offset', 0);
+            // ---------- List with filters + pagination ----------
+            $limit       = (int) $request->input('limit', 10);
+            $offset      = (int) $request->input('offset', 0);
+            $search      = trim((string) $request->input('search', ''));        // client name
+            $categoryId  = $request->input('category');                          // category id
+            $subCatId    = $request->input('sub_category');                      // sub_category id
+            $tagId       = $request->input('tags');                              // single tag id to filter
+            $rmId        = $request->input('rm');                                // rm user id
+            $dateFrom    = $request->input('date_from');                         // YYYY-MM-DD
+            $dateTo      = $request->input('date_to');                           // YYYY-MM-DD
 
-            $items = ClientsModel::with([
+            // total BEFORE filters
+            $total = ClientsModel::count();
+
+            $q = ClientsModel::with([
                     'categoryRef:id,name',
                     'subCategoryRef:id,name',
                     'rmRef:id,name,username,email',
                 ])
-                ->select('id','name','category','sub_category','tags','city','state','rm')
-                ->orderBy('id','desc')
-                ->skip($offset)
-                ->take($limit)
-                ->get();
+                ->select('id','name','category','sub_category','tags','city','state','rm','created_at','updated_at')
+                ->orderBy('id','desc');
 
-            // Collect all tag ids across the page to fetch once
+            // ----- Filters -----
+            if ($search !== '') {
+                $q->where('name', 'like', "%{$search}%");
+            }
+            if (!empty($categoryId)) {
+                $q->where('category', (int) $categoryId);
+            }
+            if (!empty($subCatId)) {
+                $q->where('sub_category', (int) $subCatId);
+            }
+            if (!empty($rmId)) {
+                $q->where('rm', (int) $rmId);
+            }
+            // Filter by a single tag id inside comma-separated 'tags' column
+            if (!empty($tagId)) {
+                $tagId = (int) $tagId;
+                // Use FIND_IN_SET safely
+                $q->whereRaw('FIND_IN_SET(?, tags)', [$tagId]);
+            }
+            if (!empty($dateFrom)) {
+                $q->whereDate('created_at', '>=', $dateFrom);
+            }
+            if (!empty($dateTo)) {
+                $q->whereDate('created_at', '<=', $dateTo);
+            }
+
+            // Pagination
+            $items = $q->skip($offset)->take($limit)->get();
+
+            // Build a tag map for all items in this page (single query)
             $allTagIds = $items->flatMap(function ($c) {
                     return collect(explode(',', (string) $c->tags))
                         ->map(fn($v) => (int) trim($v))
@@ -163,7 +201,6 @@ class ClientsController extends Controller
                     ->get()
                     ->keyBy('id');
 
-            // Shape each item
             $data = $items->map(function ($c) use ($tagMap) {
                 $tagIds = collect(explode(',', (string) $c->tags))
                     ->map(fn($v) => (int) trim($v))
@@ -190,16 +227,19 @@ class ClientsController extends Controller
                     'rm'    => $c->rmRef
                         ? ['id' => $c->rmRef->id, 'name' => $c->rmRef->name, 'username' => $c->rmRef->username]
                         : null,
+                    'created_at' => $c->created_at,
+                    'updated_at' => $c->updated_at,
                 ];
             });
 
             return response()->json([
-                'status'  => true,
-                'message' => 'Clients fetched successfully.',
-                'count'   => $data->count(),
+                'code'    => 200,
+                'status'  => 'success',
+                'message' => 'Clients retrieved successfully.',
+                'total'   => $total,           // before filters
+                'count'   => $data->count(),   // after filters + pagination
                 'data'    => $data,
             ], 200);
-
         } catch (\Throwable $e) {
             Log::error('Clients fetch failed', [
                 'error' => $e->getMessage(),

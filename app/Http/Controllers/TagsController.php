@@ -56,26 +56,35 @@ class TagsController extends Controller
 
                 return $tag
                     ? response()->json([
-                        'status' => true, 'message' => 'Tag fetched successfully.', 'data' => $tag,
+                        'code' => 200, 'status' => true, 'message' => 'Tag fetched successfully.', 'data' => $tag,
                       ], 200)
                     : response()->json([
-                        'status' => false, 'message' => 'Tag not found.',
+                        'code' => 404, 'status' => false, 'message' => 'Tag not found.',
                       ], 404);
             }
 
+            // ---------- List with search + pagination ----------
             $limit  = (int) $request->input('limit', 10);
             $offset = (int) $request->input('offset', 0);
+            $search = trim((string) $request->input('search', '')); // optional
 
-            $tags = TagsModel::select('id','name')
-                ->orderBy('id','desc')
-                ->skip($offset)
-                ->take($limit)
-                ->get();
+            // total BEFORE filters
+            $total = TagsModel::count();
+
+            $q = TagsModel::select('id','name')->orderBy('id','desc');
+
+            if ($search !== '') {
+                $q->where('name', 'like', "%{$search}%");
+            }
+
+            $tags  = $q->skip($offset)->take($limit)->get();
+            $count = $tags->count();
 
             return response()->json([
                 'status'  => true,
                 'message' => 'Tags fetched successfully.',
-                'count'   => $tags->count(),
+                'total'   => $total,  // before filters
+                'count'   => $count,  // after filters + pagination
                 'data'    => $tags,
             ], 200);
 
