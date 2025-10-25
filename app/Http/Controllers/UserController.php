@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 use App\Models\User;
+use App\Models\OrdersModel;
+use App\Models\ClientsModel;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -247,6 +249,53 @@ class UserController extends Controller
                 'success' => false,
                 'message' => 'Something went wrong while deleting user!',
                 'error'   => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    // dashboard
+    public function summary()
+    {
+        try {
+            // Aggregate order counts in one query
+            $ordersAgg = OrdersModel::selectRaw("
+                COUNT(*) as total_orders,
+                SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as total_pending_orders,
+                SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as total_completed_orders,
+                SUM(CASE WHEN status = 'short_closed' THEN 1 ELSE 0 END) as total_short_closed,
+                SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END) as total_cancelled
+            ")->first();
+
+            // Other totals
+            $totalClients = ClientsModel::count();
+            $totalUsers   = User::count();
+
+            return response()->json([
+                'code'    => 200,
+                'status'  => 'success',
+                'message' => 'Dashboard metrics retrieved.',
+                'data'    => [
+                    'total_orders'           => (int) ($ordersAgg->total_orders ?? 0),
+                    'total_clients'          => (int) $totalClients,
+                    'total_users'            => (int) $totalUsers,
+                    'total_pending_orders'   => (int) ($ordersAgg->total_pending_orders ?? 0),
+                    'total_completed_orders' => (int) ($ordersAgg->total_completed_orders ?? 0),
+                    'total_short_closed'     => (int) ($ordersAgg->total_short_closed ?? 0),
+                    'total_cancelled'        => (int) ($ordersAgg->total_cancelled ?? 0),
+                ],
+            ], 200);
+
+        } catch (\Throwable $e) {
+            Log::error('Dashboard summary failed', [
+                'error' => $e->getMessage(),
+                'file'  => $e->getFile(),
+                'line'  => $e->getLine(),
+            ]);
+
+            return response()->json([
+                'code'    => 500,
+                'status'  => 'error',
+                'message' => 'Something went wrong while fetching dashboard metrics.',
             ], 500);
         }
     }

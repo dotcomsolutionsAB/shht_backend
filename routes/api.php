@@ -23,6 +23,7 @@ Route::post('/login', [AuthController::class, 'login']);
 
 Route::middleware('auth:sanctum', 'role:admin,sales,staff,dispatch')->group(function () {
 
+    Route::get('/dashboard', [UserController::class, 'summary']);
     // users route
     Route::prefix('users')->group(function () {
         Route::post('/create', [UserController::class, 'create']);
