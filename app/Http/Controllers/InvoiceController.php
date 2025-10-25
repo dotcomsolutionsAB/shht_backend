@@ -187,7 +187,6 @@ class InvoiceController extends Controller
     //         ], 500);
     //     }
     // }
-
     public function fetch(Request $request, $id = null)
     {
         try {
@@ -248,6 +247,15 @@ class InvoiceController extends Controller
             $dispatchedBy = $request->input('dispatched_by');                // User ID for dispatched_by
             $dateFrom    = $request->input('date_from');                     // YYYY-MM-DD
             $dateTo      = $request->input('date_to');                       // YYYY-MM-DD
+
+            // Log the search filter details
+            \Log::info("Fetching invoices with filters:", [
+                'search'      => $search,
+                'billedBy'    => $billedBy,
+                'dispatchedBy' => $dispatchedBy,
+                'dateFrom'    => $dateFrom,
+                'dateTo'      => $dateTo,
+            ]);
 
             // Total before filters
             $total = InvoiceModel::count();
