@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
+use Illuminate\Http\JsonResponse;
 
 class OrdersController extends Controller
 {
@@ -517,4 +518,192 @@ class OrdersController extends Controller
             ], 500);
         }
     }
+
+    
+    /* ------------------------------------------------------------------
+     | 1.  Allowed next statuses
+     * ------------------------------------------------------------------*/
+    /**
+     * Get the list of statuses an order is allowed to move to.
+     *
+     * @param Request $request
+     * @param int     $id   Order ID
+     * @return JsonResponse
+     */
+    public function validate_order_status(int $id): JsonResponse
+    {
+        try {
+            /* ----------------------------------------------------------
+             * 1.  Find the order
+             * ---------------------------------------------------------- */
+            $order = Order::find($id);
+
+            if (!$order) {
+                return response()->json([
+                    'status'  => false,
+                    'message' => 'Order not found.',
+                ], 404);
+            }
+
+            /* ----------------------------------------------------------
+             * 2.  Allowed transitions map
+             * ---------------------------------------------------------- */
+            $transitions = [
+                'pending'         => ['dispatched'],
+                'dispatched'      => ['completed', 'partial_pending', 'out_of_stock'],
+                'completed'       => ['cancelled'],
+                'partial_pending' => ['dispatch', 'short_close', 'cancelled'],
+                'out_of_stock'    => ['dispatch', 'cancelled'],
+                'short_closed'    => ['invoiced', 'cancelled'],
+
+                /* ------------------------------------------------------
+                 * Terminal statuses – no further moves
+                 * ------------------------------------------------------ */
+                'invoiced'        => [],
+                'cancelled'       => [],
+            ];
+
+            /* ----------------------------------------------------------
+             * 3.  Return the list
+             * ---------------------------------------------------------- */
+            $allowed = $transitions[$order->status] ?? [];
+
+            return response()->json([
+                'status' => true,
+                'data'   => [
+                    'current_status' => $order->status,
+                    'allowed_status' => $allowed,
+                ],
+            ], 200);
+        } catch (\Throwable $e) {
+            \Log::error('get_order_status failed', [
+                'order_id' => $id,
+                'error'    => $e->getMessage(),
+                'file'     => $e->getFile(),
+                'line'     => $e->getLine(),
+            ]);
+
+            return response()->json([
+                'status'  => false,
+                'message' => 'Something went wrong while retrieving allowed statuses.',
+            ], 500);
+        }
+    }
+
+    /* ------------------------------------------------------------------
+     | 2.  Perform the status change
+     * ------------------------------------------------------------------*/
+    public function updateStatus(Request $request, string $orderId): JsonResponse
+    {
+        $rules = [
+            'status'            => 'required|string|in:dispatched,invoiced,completed,partial_pending,out_of_stock,short_closed,cancelled',
+            'optional_fields'   => 'nullable|array',
+        ];
+        $validated = $request->validate($rules);
+
+        DB::beginTransaction();
+        try {
+            $order = Order::findOrFail($orderId);
+
+            /* ----------------------------------------------------------
+             * A.  Is the requested move allowed ?
+             * ---------------------------------------------------------- */
+            $allowed = $this->getAllowedNextStatuses($order->status);
+            if (!in_array($validated['status'], $allowed, true)) {
+                return response()->json([
+                    'status'  => false,
+                    'message' => "Invalid transition from {$order->status} to {$validated['status']}.",
+                ], 422);
+            }
+
+            $user = auth()->user(); // via sanctum / passport / whatever you use
+
+            /* ----------------------------------------------------------
+             * B.  Status-specific checks & data preparation
+             * ---------------------------------------------------------- */
+            $extra = [];
+
+            switch ($validated['status']) {
+                case 'dispatched':
+                    $dispatchedBy = $validated['optional_fields']['dispatched_by'] ?? null;
+                    if (!$dispatchedBy) {
+                        throw new \Exception('dispatched_by user id is required.');
+                    }
+                    if ((int)$order->initiated_by !== (int)$user->id) {
+                        throw new \Exception('Only the initiator of the order can dispatch it.');
+                    }
+                    $extra['dispatched_by'] = $dispatchedBy;
+                    break;
+
+                case 'invoiced':
+                    $invNum = $validated['optional_fields']['invoice_number'] ?? null;
+                    $invDate = $validated['optional_fields']['invoice_date'] ?? null;
+                    if (!$invNum || !$invDate) {
+                        throw new \Exception('invoice_number and invoice_date are required for invoicing.');
+                    }
+                    if ((int)$user->id !== (int)($order->initiated_by ?? 0)) {
+                        throw new \Exception('Only the initiator can create the invoice.');
+                    }
+                    // create invoice record
+                    $invoice = Invoice::create([
+                        'order_id'       => $order->id,
+                        'invoice_number' => $invNum,
+                        'invoice_date'   => $invDate,
+                        'billed_by'      => $user->id,
+                    ]);
+                    $extra['invoice_id'] = $invoice->id;
+                    break;
+            }
+
+            /* ----------------------------------------------------------
+             * C.  Update order
+             * ---------------------------------------------------------- */
+            $order->status = $validated['status'];
+            foreach ($extra as $k => $v) {
+                $order->$k = $v;
+            }
+            $order->save();
+
+            DB::commit();
+
+            return response()->json([
+                'status'  => true,
+                'message' => 'Order status updated successfully.',
+                'data'    => [
+                    'order_id' => $order->id,
+                    'status'   => $order->status,
+                ],
+            ]);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            \Log::error('changeStatus failed', [
+                'order_id' => $orderId,
+                'payload'  => $request->all(),
+                'error'    => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'status'  => false,
+                'message' => $e->getMessage() ?: 'Status update failed.',
+            ], 500);
+        }
+    }
+
+    /* ------------------------------------------------------------------
+     | Helper: allowed next statuses
+     * ------------------------------------------------------------------*/
+    private function getAllowedNextStatuses(string $current): array
+    {
+        return [
+            'pending'         => ['dispatched'],
+            'dispatched'      => ['completed','partial_pending','out_of_stock'],
+            'completed'       => ['cancelled'],
+            'partial_pending' => ['dispatched','short_closed','cancelled'],
+            'out_of_stock'    => ['dispatched','cancelled'],
+            'short_closed'    => ['invoiced','cancelled'],
+            'invoiced'        => [],
+            'cancelled'       => [],
+        ][$current] ?? [];
+    }
+
 }

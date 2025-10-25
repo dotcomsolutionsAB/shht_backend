@@ -88,6 +88,8 @@ Route::middleware('auth:sanctum', 'role:admin,sales,staff,dispatch')->group(func
         Route::post('/retrieve/{id?}', [OrdersController::class, 'fetch']);
         Route::post('/update/{id}', [OrdersController::class, 'edit']);
         Route::delete('/delete/{id}', [OrdersController::class, 'delete']);
+        Route::get('/get_order_status/{id}', [OrdersController::class, 'validate_order_status']);
+        Route::get('/changeStatus', [OrdersController::class, 'updateStatus']);
     });
 
     // invoice route
