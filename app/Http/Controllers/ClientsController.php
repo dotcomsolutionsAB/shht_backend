@@ -138,12 +138,22 @@ class ClientsController extends Controller
             $limit       = (int) $request->input('limit', 10);
             $offset      = (int) $request->input('offset', 0);
             $search      = trim((string) $request->input('search', ''));        // client name
-            $categoryId  = $request->input('category');                          // category id
-            $subCatId    = $request->input('sub_category');                      // sub_category id
-            $tagId       = $request->input('tags');                              // single tag id to filter
+            $categoryRaw = $request->input('category');     // "1,5,9"
+            $subCatRaw   = $request->input('sub_category'); // "11,12"
+            $tagRaw      = $request->input('tags');         // "101,102,103"
             $rmId        = $request->input('rm');                                // rm user id
             $dateFrom    = $request->input('date_from');                         // YYYY-MM-DD
             $dateTo      = $request->input('date_to');                           // YYYY-MM-DD
+
+
+            // helper: "1,5,9" → [1,5,9]  (int[])
+            $toIntArray = fn ($str) => $str
+                ? array_map('intval', array_filter(explode(',', $str)))
+                : [];
+
+            $categoryIds = $toIntArray($categoryRaw);
+            $subCatIds   = $toIntArray($subCatRaw);
+            $tagIds      = $toIntArray($tagRaw);
 
             // total BEFORE filters
             $total = ClientsModel::count();
@@ -160,20 +170,24 @@ class ClientsController extends Controller
             if ($search !== '') {
                 $q->where('name', 'like', "%{$search}%");
             }
-            if (!empty($categoryId)) {
-                $q->where('category', (int) $categoryId);
+            if ($categoryIds) {
+                $q->whereIn('category', $categoryIds);
             }
-            if (!empty($subCatId)) {
-                $q->where('sub_category', (int) $subCatId);
+
+            if ($subCatIds) {
+                $q->whereIn('sub_category', $subCatIds);
+            }
+
+            if ($tagIds) {
+                // tags stored as comma-separated string → use FIND_IN_SET
+                $q->where(function ($q) use ($tagIds) {
+                    foreach ($tagIds as $tid) {
+                        $q->orWhereRaw('FIND_IN_SET(?, tags)', [$tid]);
+                    }
+                });
             }
             if (!empty($rmId)) {
                 $q->where('rm', (int) $rmId);
-            }
-            // Filter by a single tag id inside comma-separated 'tags' column
-            if (!empty($tagId)) {
-                $tagId = (int) $tagId;
-                // Use FIND_IN_SET safely
-                $q->whereRaw('FIND_IN_SET(?, tags)', [$tagId]);
             }
             if (!empty($dateFrom)) {
                 $q->whereDate('created_at', '>=', $dateFrom);

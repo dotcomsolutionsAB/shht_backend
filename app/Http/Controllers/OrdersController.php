@@ -26,6 +26,9 @@ class OrdersController extends Controller
                 // you asked to provide order_no (unique). We will generate only so_no from counter.
                 'order_no'               => ['required','string','max:255','unique:t_orders,order_no'],
 
+                'email'                 => ['required','email', 'max:255'],
+                'mobile'                => ['required','string', 'max:255'],
+
                 'so_date'                => ['required','date'],
                 'order_date'             => ['required','date'],
 
@@ -54,6 +57,9 @@ class OrdersController extends Controller
                     'company'               => $request->company,
                     'client'                => (int) $request->client,
                     'client_contact_person' => (int) $request->client_contact_person,
+
+                    'email'                 => $request->email,
+                    'mobile'                => $request->mobile,
 
                     'so_no'                 => $counter['so_no'],
                     'so_date'               => $request->so_date,
@@ -88,6 +94,8 @@ class OrdersController extends Controller
                     'status'                => $order->status,
                     'client'                => $order->client,
                     'client_contact_person' => $order->client_contact_person,
+                    'email'                 => $order->email,
+                    'mobile'                => $order->mobile,
                     'invoice'               => $order->invoice,
                     'initiated_by'          => $order->initiated_by,
                     'checked_by'            => $order->checked_by,
@@ -327,6 +335,8 @@ class OrdersController extends Controller
                 'company'               => ['required', Rule::in(['SHHT', 'SHAPL'])],
                 'client'                => ['required', 'integer', 'exists:t_clients,id'],
                 'client_contact_person' => ['required', 'integer', 'exists:t_clients_contact_person,id'],
+                'email'                 => ['required','email', 'max:255'],
+                'mobile'                => ['required','string', 'max:255'],
                 'so_date'               => ['required', 'date'],
                 'order_no'              => [
                     'required', 'string', 'max:255',
@@ -355,6 +365,8 @@ class OrdersController extends Controller
                 'company'               => $request->company,
                 'client'                => $request->client,
                 'client_contact_person' => $request->client_contact_person,
+                'email'                 =>$request->email,
+                'mobile'                =>$request->mobile,
                 'so_date'               => $request->so_date,
                 'order_no'              => $request->order_no,
                 'order_date'            => $request->order_date,
@@ -400,6 +412,8 @@ class OrdersController extends Controller
                         'mobile' => $fresh->contactRef->mobile,
                         'email' => $fresh->contactRef->email,
                     ] : null,
+                    'email'            => $fresh->email,
+                    'mobile'            => $fresh->mobile,
                     'initiated_by'  => $fresh->initiatedByRef ? ['id'=>$fresh->initiatedByRef->id,'name'=>$fresh->initiatedByRef->name,'username'=>$fresh->initiatedByRef->username] : null,
                     'checked_by'    => $fresh->checkedByRef   ? ['id'=>$fresh->checkedByRef->id,'name'=>$fresh->checkedByRef->name,'username'=>$fresh->checkedByRef->username] : null,
                     'dispatched_by' => $fresh->dispatchedByRef? ['id'=>$fresh->dispatchedByRef->id,'name'=>$fresh->dispatchedByRef->name,'username'=>$fresh->dispatchedByRef->username] : null,
@@ -476,6 +490,8 @@ class OrdersController extends Controller
                         'mobile' => $o->contactRef->mobile,
                         'email' => $o->contactRef->email,
                     ] : null,
+                'email' => $o->email,
+                'mobile' => $o->mobile,
                 'invoice' => $o->invoice ? ['id' => (int) $o->invoice] : null,
                 'initiated_by'  => $o->initiatedByRef ? [
                     'id'=>$o->initiatedByRef->id, 'name'=>$o->initiatedByRef->name, 'username'=>$o->initiatedByRef->username
@@ -644,7 +660,7 @@ class OrdersController extends Controller
                     }
                     // who is creating the invoice = bearer token
                     $billedBy = auth()->id();
-                    
+
                     // create invoice record
                     $invoice = app(InvoiceController::class)
                                 ->makeInvoice([

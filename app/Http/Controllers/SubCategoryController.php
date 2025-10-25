@@ -81,7 +81,8 @@ class SubCategoryController extends Controller
             // ---------- List with filters ----------
             $limit    = (int) $request->input('limit', 10);
             $offset   = (int) $request->input('offset', 0);
-            $category = $request->input('category');           // optional: id
+            // ---------- inside fetch() ----------
+            $categoryRaw = $request->input('category');   // "1,5,9"  (string)
             $search   = trim((string) $request->input('search','')); // optional: name search
 
             // Total BEFORE any filters
@@ -90,10 +91,17 @@ class SubCategoryController extends Controller
             $query = SubCategoryModel::with(['categoryRef:id,name'])
                 ->select('id','category','name') // use 'category_id' if that's your column
                 ->orderBy('id','desc');
+                
+            // turn the comma string into an array of integers
+            $categoryIds = $categoryRaw
+                ? array_map('intval', array_filter(explode(',', $categoryRaw)))
+                : [];
 
-            // Filter by category id (exact match)
-            if (!is_null($category) && $category !== '') {
-                $query->where('category', (int) $category); // or 'category_id'
+            /* ----------------------------------------------------------
+            *  filter by the array (only if we actually have ids)
+            * ---------------------------------------------------------- */
+            if ($categoryIds) {
+                $query->whereIn('category', $categoryIds);   // or 'category_id' if that is your column
             }
 
             // Smart search: match sub-category name OR parent category name

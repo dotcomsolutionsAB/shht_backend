@@ -20,6 +20,8 @@ return new class extends Migration
             ]);
             $table->unsignedBigInteger('client');
             $table->unsignedBigInteger('client_contact_person');
+            $table->string('email');
+            $table->string('mobile');
 
             // Sales Order and Order details
             $table->string('so_no')->unique();
