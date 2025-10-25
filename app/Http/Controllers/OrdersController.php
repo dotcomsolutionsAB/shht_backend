@@ -596,7 +596,7 @@ class OrdersController extends Controller
     public function updateStatus(Request $request): JsonResponse
     {
         $rules = [
-            'order_id'          => 'required|integer|exists:orders,id',
+            'order_id'          => 'required|string|exists:t_orders,order_no',
             'status'            => 'required|string|in:dispatched,invoiced,completed,partial_pending,out_of_stock,short_closed,cancelled',
             'optional_fields'   => 'nullable|array',
         ];
