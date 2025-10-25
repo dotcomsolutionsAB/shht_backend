@@ -593,7 +593,7 @@ class OrdersController extends Controller
     /* ------------------------------------------------------------------
      | 2.  Perform the status change
      * ------------------------------------------------------------------*/
-    public function updateStatus(Request $request, string $orderId): JsonResponse
+    public function updateStatus(Request $request): JsonResponse
     {
         $rules = [
             'order_id'          => 'required|integer|exists:orders,id',
