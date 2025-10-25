@@ -520,6 +520,16 @@ class InvoiceController extends Controller
             ], 500);
         }
     }
+
+    /* ----------  NEW  ---------- */
+    /** Create invoice for internal use (no HTTP) */
+    public function makeInvoice(array $data): InvoiceModel
+    {
+        // fake a request object that satisfies your own validation
+        $req = new Request($data);
+        $res = $this->create($req);          // re-use existing logic
+        return $res->getData()->data;        // the invoice object you already return
+    }
 }
 
 

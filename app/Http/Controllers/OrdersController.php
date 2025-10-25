@@ -596,6 +596,7 @@ class OrdersController extends Controller
     public function updateStatus(Request $request, string $orderId): JsonResponse
     {
         $rules = [
+            'order_id'          => 'required|integer|exists:orders,id',
             'status'            => 'required|string|in:dispatched,invoiced,completed,partial_pending,out_of_stock,short_closed,cancelled',
             'optional_fields'   => 'nullable|array',
         ];
@@ -603,7 +604,7 @@ class OrdersController extends Controller
 
         DB::beginTransaction();
         try {
-            $order = Order::findOrFail($orderId);
+            $order = Order::findOrFail($validated['order_id']);
 
             /* ----------------------------------------------------------
              * A.  Is the requested move allowed ?
@@ -645,12 +646,14 @@ class OrdersController extends Controller
                         throw new \Exception('Only the initiator can create the invoice.');
                     }
                     // create invoice record
-                    $invoice = Invoice::create([
-                        'order_id'       => $order->id,
-                        'invoice_number' => $invNum,
-                        'invoice_date'   => $invDate,
-                        'billed_by'      => $user->id,
-                    ]);
+                    $invoice = app(InvoiceController::class)
+                                ->makeInvoice([
+                                    'order'          => $order->id,
+                                    'invoice_number' => $invNum,
+                                    'invoice_date'   => $invDate,
+                                    'billed_by'      => $user->id,
+                                ]);
+
                     $extra['invoice_id'] = $invoice->id;
                     break;
             }
