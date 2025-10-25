@@ -642,9 +642,9 @@ class OrdersController extends Controller
                     if (!$invNum || !$invDate) {
                         throw new \Exception('invoice_number and invoice_date are required for invoicing.');
                     }
-                    if ((int)$user->id !== (int)($order->initiated_by ?? 0)) {
-                        throw new \Exception('Only the initiator can create the invoice.');
-                    }
+                    // who is creating the invoice = bearer token
+                    $billedBy = auth()->id();
+                    
                     // create invoice record
                     $invoice = app(InvoiceController::class)
                                 ->makeInvoice([
