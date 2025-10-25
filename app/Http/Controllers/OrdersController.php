@@ -630,10 +630,12 @@ class OrdersController extends Controller
                     if (!$dispatchedBy) {
                         throw new \Exception('dispatched_by user id is required.');
                     }
-                    // if ((int)$order->initiated_by !== (int)$user->id) {
-                    //     throw new \Exception('Only the initiator of the order can dispatch it.');
-                    // }
-                    $extra['dispatched_by'] = $dispatchedBy;
+                    /* token user MUST be the initiator of the order */
+                    if ((int) auth()->id() !== (int) $order->initiated_by) {
+                        throw new \Exception('Only the initiator of the order can dispatch it.');
+                    }
+
+                    $extra['dispatched_by'] = $dispatchedBy;   // can be different from initiator
                     break;
 
                 case 'invoiced':
