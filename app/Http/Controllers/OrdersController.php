@@ -536,7 +536,7 @@ class OrdersController extends Controller
             /* ----------------------------------------------------------
              * 1.  Find the order
              * ---------------------------------------------------------- */
-            $order = Order::find($id);
+            $order = OrdersModel::find($id);
 
             if (!$order) {
                 return response()->json([
