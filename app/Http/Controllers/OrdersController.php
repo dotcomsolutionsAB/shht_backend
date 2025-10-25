@@ -604,7 +604,7 @@ class OrdersController extends Controller
 
         DB::beginTransaction();
         try {
-            $order = OrdersModel::findOrFail($validated['order_id']);
+            $order = OrdersModel::where('order_no', $validated['order_id'])->firstOrFail();
 
             /* ----------------------------------------------------------
              * A.  Is the requested move allowed ?
