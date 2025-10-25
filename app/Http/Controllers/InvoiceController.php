@@ -187,6 +187,7 @@ class InvoiceController extends Controller
     //         ], 500);
     //     }
     // }
+
     public function fetch(Request $request, $id = null)
     {
         try {
@@ -239,32 +240,33 @@ class InvoiceController extends Controller
             }
 
             // ---------- List with filters + pagination ----------
-            $limit      = (int) $request->input('limit', 10);
-            $offset     = (int) $request->input('offset', 0);
-            $search     = trim((string) $request->input('search', ''));  // invoice no, order no, client name
-            $billedBy   = $request->input('billed_by');                   // filter by user id
-            $dispatchedBy = $request->input('dispatched_by');             // filter by user id
-            $dateFrom   = $request->input('date_from');                   // filter by invoice date
-            $dateTo     = $request->input('date_to');                     // filter by invoice date
+            $limit        = (int) $request->input('limit', 10);
+            $offset       = (int) $request->input('offset', 0);
+            $search       = trim((string) $request->input('search', ''));
+            $billedBy     = $request->input('billed_by');
+            $dispatchedBy = $request->input('dispatched_by');   // <-- value from orders table
+            $dateFrom     = $request->input('date_from');
+            $dateTo       = $request->input('date_to');
 
-            // Total count before applying filters
-            $total = InvoiceModel::count();
-
+            /* -----------------------------------------------------------------
+            * 1.  Build the query once (will reuse for count() and get())
+            * ----------------------------------------------------------------- */
             $q = InvoiceModel::with([
-                    'orderRef:id,so_no,order_no,status,dispatched_by',  // Fetch necessary order columns
+                    'orderRef:id,so_no,order_no,status,dispatched_by',   // <- still needed
                     'billedByRef:id,name,username',
-                    'dispatchedByRef:id,name,username'  // Fetch dispatched_by from the User model (assuming it's in `users` table)
+                    // dispatcher user will be loaded manually below
                 ])
-                ->select('id', 'order', 'invoice_number', 'invoice_date', 'billed_by', 'dispatched_by', 'created_at', 'updated_at')
+                ->select('id', 'order', 'invoice_number', 'invoice_date',
+                        'billed_by', 'created_at', 'updated_at')   // <- NO dispatched_by here
                 ->orderBy('id', 'desc');
 
-            // Apply filters
+            /* ------------------ apply filters ------------------ */
             if ($search !== '') {
                 $q->where(function ($w) use ($search) {
                     $w->where('invoice_number', 'like', "%{$search}%")
-                    ->orWhere('order_no', 'like', "%{$search}%")
-                    ->orWhereHas('orderRef', function ($query) use ($search) {
-                        $query->where('client', 'like', "%{$search}%");
+                    ->orWhereHas('orderRef', function ($q) use ($search) {
+                        $q->where('order_no', 'like', "%{$search}%")
+                            ->orWhere('client', 'like', "%{$search}%");
                     });
                 });
             }
@@ -273,43 +275,69 @@ class InvoiceController extends Controller
                 $q->where('billed_by', (int) $billedBy);
             }
 
+            /*  >>>  DISPATCHER FILTER NOW ON orders TABLE  <<<  */
             if (!empty($dispatchedBy)) {
-                $q->where('dispatched_by', (int) $dispatchedBy);
+                $q->whereHas('orderRef', function ($q) use ($dispatchedBy) {
+                    $q->where('dispatched_by', (int) $dispatchedBy);
+                });
             }
 
             if (!empty($dateFrom)) {
                 $q->whereDate('invoice_date', '>=', $dateFrom);
             }
-
             if (!empty($dateTo)) {
                 $q->whereDate('invoice_date', '<=', $dateTo);
             }
 
-            // Pagination
-            $items = $q->skip($offset)->take($limit)->get();
-            $count = $items->count();  // how many returned after filters and pagination
+            /* -----------------------------------------------------------------
+            * 2.  Total AFTER filters
+            * ----------------------------------------------------------------- */
+            $total = (clone $q)->count();
 
-            // Map payload to shape the response
-            $data = $items->map(function ($inv) {
+            /* -----------------------------------------------------------------
+            * 3.  Paginate
+            * ----------------------------------------------------------------- */
+            $items = $q->skip($offset)->take($limit)->get();
+
+            /* -----------------------------------------------------------------
+            * 4.  Eager-load the dispatcher user in one go
+            *     (orderRef.dispatched_by -> users.id)
+            * ----------------------------------------------------------------- */
+            $dispatchIds = $items->pluck('orderRef.dispatched_by')
+                                ->filter()          // remove nulls
+                                ->unique()
+                                ->values();
+            $dispatchers = \App\Models\User::whereIn('id', $dispatchIds)
+                                        ->get(['id', 'name', 'username'])
+                                        ->keyBy('id');
+
+            /* -----------------------------------------------------------------
+            * 5.  Shape the response
+            * ----------------------------------------------------------------- */
+            $data = $items->map(function ($inv) use ($dispatchers) {
+                $dispatcher = $inv->orderRef && $inv->orderRef->dispatched_by
+                            ? $dispatchers->get($inv->orderRef->dispatched_by)
+                            : null;
+
                 return [
                     'id'             => $inv->id,
                     'invoice_number' => $inv->invoice_number,
                     'invoice_date'   => $inv->invoice_date,
                     'order'          => $inv->orderRef ? [
-                        'id'         => $inv->orderRef->id,
-                        'so_no'      => $inv->orderRef->so_no,
-                        'order_no'   => $inv->orderRef->order_no,
-                        'status'     => $inv->orderRef->status,
+                        'id'            => $inv->orderRef->id,
+                        'so_no'         => $inv->orderRef->so_no,
+                        'order_no'      => $inv->orderRef->order_no,
+                        'status'        => $inv->orderRef->status,
+                        'dispatched_by' => $dispatcher ? [
+                            'id'       => $dispatcher->id,
+                            'name'     => $dispatcher->name,
+                            'username' => $dispatcher->username,
+                        ] : null,
                     ] : null,
                     'billed_by'      => $inv->billedByRef ? [
                         'id'       => $inv->billedByRef->id,
                         'name'     => $inv->billedByRef->name,
                         'username' => $inv->billedByRef->username,
-                    ] : null,
-                    'dispatched_by'  => $inv->dispatchedByRef ? [
-                        'id'       => $inv->dispatchedByRef->id,
-                        'name'     => $inv->dispatchedByRef->name,
-                        'username' => $inv->dispatchedByRef->username,
                     ] : null,
                     'created_at'     => $inv->created_at,
                     'updated_at'     => $inv->updated_at,
@@ -320,8 +348,8 @@ class InvoiceController extends Controller
                 'code'    => 200,
                 'status'  => 'success',
                 'message' => 'Invoices retrieved successfully.',
-                'total'   => $total,    // Before filters
-                'count'   => $count,    // After filters (and pagination)
+                'total'   => $total,
+                'count'   => $data->count(),
                 'data'    => $data,
             ], 200);
 
