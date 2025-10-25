@@ -193,9 +193,9 @@ class InvoiceController extends Controller
             // ---------- Single invoice by ID ----------
             if ($id !== null) {
                 $inv = InvoiceModel::with([
-                        'orderRef:id,so_no,order_no,status',
+                        'orderRef:id,so_no,order_no,status,dispatched_by',  // Fetching necessary columns from orders
                         'billedByRef:id,name,username',
-                        'dispatchedByRef:id,name,username', // Dispatched by from the order
+                        'dispatchedByRef:id,name,username'  // Fetch dispatched_by from User model (assuming it's in `users` table)
                     ])
                     ->select('id', 'order', 'invoice_number', 'invoice_date', 'billed_by', 'dispatched_by', 'created_at', 'updated_at')
                     ->find($id);
@@ -207,29 +207,28 @@ class InvoiceController extends Controller
                     ], 404);
                 }
 
-                // Shape the data for single invoice
                 $data = [
-                    'id'               => $inv->id,
-                    'invoice_number'   => $inv->invoice_number,
-                    'invoice_date'     => $inv->invoice_date,
-                    'client'           => $inv->orderRef ? [
-                        'id'         => $inv->orderRef->clientRef->id ?? null,
-                        'name'       => $inv->orderRef->clientRef->name ?? null,
+                    'id'             => $inv->id,
+                    'invoice_number' => $inv->invoice_number,
+                    'invoice_date'   => $inv->invoice_date,
+                    'order'          => $inv->orderRef ? [
+                        'id'         => $inv->orderRef->id,
+                        'so_no'      => $inv->orderRef->so_no,
+                        'order_no'   => $inv->orderRef->order_no,
+                        'status'     => $inv->orderRef->status,
                     ] : null,
-                    'order_no'         => $inv->orderRef ? $inv->orderRef->order_no : null,
-                    'so_number'        => $inv->orderRef ? $inv->orderRef->so_no : null,
-                    'billed_by'        => $inv->billedByRef ? [
-                        'id'         => $inv->billedByRef->id,
-                        'name'       => $inv->billedByRef->name,
-                        'username'   => $inv->billedByRef->username,
+                    'billed_by'      => $inv->billedByRef ? [
+                        'id'       => $inv->billedByRef->id,
+                        'name'     => $inv->billedByRef->name,
+                        'username' => $inv->billedByRef->username,
                     ] : null,
-                    'dispatched_by'    => $inv->dispatchedByRef ? [
-                        'id'         => $inv->dispatchedByRef->id,
-                        'name'       => $inv->dispatchedByRef->name,
-                        'username'   => $inv->dispatchedByRef->username,
+                    'dispatched_by'  => $inv->dispatchedByRef ? [
+                        'id'       => $inv->dispatchedByRef->id,
+                        'name'     => $inv->dispatchedByRef->name,
+                        'username' => $inv->dispatchedByRef->username,
                     ] : null,
-                    'created_at'       => $inv->created_at,
-                    'updated_at'       => $inv->updated_at,
+                    'created_at'     => $inv->created_at,
+                    'updated_at'     => $inv->updated_at,
                 ];
 
                 return response()->json([
@@ -240,41 +239,32 @@ class InvoiceController extends Controller
             }
 
             // ---------- List with filters + pagination ----------
-            $limit       = (int) $request->input('limit', 10);
-            $offset      = (int) $request->input('offset', 0);
-            $search      = trim((string) $request->input('search', ''));     // Search based on invoice_no, order_no, or client
-            $billedBy    = $request->input('billed_by');                     // User ID for billed_by
-            $dispatchedBy = $request->input('dispatched_by');                // User ID for dispatched_by
-            $dateFrom    = $request->input('date_from');                     // YYYY-MM-DD
-            $dateTo      = $request->input('date_to');                       // YYYY-MM-DD
+            $limit      = (int) $request->input('limit', 10);
+            $offset     = (int) $request->input('offset', 0);
+            $search     = trim((string) $request->input('search', ''));  // invoice no, order no, client name
+            $billedBy   = $request->input('billed_by');                   // filter by user id
+            $dispatchedBy = $request->input('dispatched_by');             // filter by user id
+            $dateFrom   = $request->input('date_from');                   // filter by invoice date
+            $dateTo     = $request->input('date_to');                     // filter by invoice date
 
-            // Log the search filter details
-            \Log::info("Fetching invoices with filters:", [
-                'search'      => $search,
-                'billedBy'    => $billedBy,
-                'dispatchedBy' => $dispatchedBy,
-                'dateFrom'    => $dateFrom,
-                'dateTo'      => $dateTo,
-            ]);
-
-            // Total before filters
+            // Total count before applying filters
             $total = InvoiceModel::count();
 
             $q = InvoiceModel::with([
-                    'orderRef:id,so_no,order_no,status',
+                    'orderRef:id,so_no,order_no,status,dispatched_by',  // Fetch necessary order columns
                     'billedByRef:id,name,username',
-                    'dispatchedByRef:id,name,username', // Dispatched by from order
+                    'dispatchedByRef:id,name,username'  // Fetch dispatched_by from the User model (assuming it's in `users` table)
                 ])
                 ->select('id', 'order', 'invoice_number', 'invoice_date', 'billed_by', 'dispatched_by', 'created_at', 'updated_at')
                 ->orderBy('id', 'desc');
 
-            // ----- Filters -----
+            // Apply filters
             if ($search !== '') {
                 $q->where(function ($w) use ($search) {
                     $w->where('invoice_number', 'like', "%{$search}%")
                     ->orWhere('order_no', 'like', "%{$search}%")
-                    ->orWhereHas('orderRef.clientRef', function ($query) use ($search) {
-                        $query->where('name', 'like', "%{$search}%");
+                    ->orWhereHas('orderRef', function ($query) use ($search) {
+                        $query->where('client', 'like', "%{$search}%");
                     });
                 });
             }
@@ -282,52 +272,56 @@ class InvoiceController extends Controller
             if (!empty($billedBy)) {
                 $q->where('billed_by', (int) $billedBy);
             }
+
             if (!empty($dispatchedBy)) {
                 $q->where('dispatched_by', (int) $dispatchedBy);
             }
+
             if (!empty($dateFrom)) {
                 $q->whereDate('invoice_date', '>=', $dateFrom);
             }
+
             if (!empty($dateTo)) {
                 $q->whereDate('invoice_date', '<=', $dateTo);
             }
 
             // Pagination
             $items = $q->skip($offset)->take($limit)->get();
-            $count = $items->count(); // how many returned after filters and pagination
+            $count = $items->count();  // how many returned after filters and pagination
 
-            // Build data
+            // Map payload to shape the response
             $data = $items->map(function ($inv) {
                 return [
-                    'id'               => $inv->id,
-                    'invoice_number'   => $inv->invoice_number,
-                    'invoice_date'     => $inv->invoice_date,
-                    'client'           => $inv->orderRef ? [
-                        'id'         => $inv->orderRef->clientRef->id ?? null,
-                        'name'       => $inv->orderRef->clientRef->name ?? null,
+                    'id'             => $inv->id,
+                    'invoice_number' => $inv->invoice_number,
+                    'invoice_date'   => $inv->invoice_date,
+                    'order'          => $inv->orderRef ? [
+                        'id'         => $inv->orderRef->id,
+                        'so_no'      => $inv->orderRef->so_no,
+                        'order_no'   => $inv->orderRef->order_no,
+                        'status'     => $inv->orderRef->status,
                     ] : null,
-                    'order_no'         => $inv->orderRef ? $inv->orderRef->order_no : null,
-                    'so_number'        => $inv->orderRef ? $inv->orderRef->so_no : null,
-                    'billed_by'        => $inv->billedByRef ? [
-                        'id'         => $inv->billedByRef->id,
-                        'name'       => $inv->billedByRef->name,
-                        'username'   => $inv->billedByRef->username,
+                    'billed_by'      => $inv->billedByRef ? [
+                        'id'       => $inv->billedByRef->id,
+                        'name'     => $inv->billedByRef->name,
+                        'username' => $inv->billedByRef->username,
                     ] : null,
-                    'dispatched_by'    => $inv->dispatchedByRef ? [
-                        'id'         => $inv->dispatchedByRef->id,
-                        'name'       => $inv->dispatchedByRef->name,
-                        'username'   => $inv->dispatchedByRef->username,
+                    'dispatched_by'  => $inv->dispatchedByRef ? [
+                        'id'       => $inv->dispatchedByRef->id,
+                        'name'     => $inv->dispatchedByRef->name,
+                        'username' => $inv->dispatchedByRef->username,
                     ] : null,
-                    'created_at'       => $inv->created_at,
-                    'updated_at'       => $inv->updated_at,
+                    'created_at'     => $inv->created_at,
+                    'updated_at'     => $inv->updated_at,
                 ];
             });
 
             return response()->json([
-                'status'  => true,
+                'code'    => 200,
+                'status'  => 'success',
                 'message' => 'Invoices retrieved successfully.',
-                'total'   => $total,      // before filters
-                'count'   => $count,      // after filters and pagination
+                'total'   => $total,    // Before filters
+                'count'   => $count,    // After filters (and pagination)
                 'data'    => $data,
             ], 200);
 
