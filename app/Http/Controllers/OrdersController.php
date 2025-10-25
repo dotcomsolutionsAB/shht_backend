@@ -221,13 +221,14 @@ class OrdersController extends Controller
 
             $q = OrdersModel::with([
                     'clientRef:id,name',
-                    'contactRef:id,client,name,designation,mobile,email',
+                    'contactRef:id,client,name,designation',
                     'initiatedByRef:id,name,username',
                     'checkedByRef:id,name,username',
                     'dispatchedByRef:id,name,username',
                 ])
                 ->select(
                     'id','company','client','client_contact_person',
+                    'mobile','email',
                     'so_no','so_date','order_no','order_date',
                     'invoice','status',
                     'initiated_by','checked_by','dispatched_by',
