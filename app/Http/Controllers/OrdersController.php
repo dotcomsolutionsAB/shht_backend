@@ -680,7 +680,7 @@ class OrdersController extends Controller
         } catch (\Throwable $e) {
             DB::rollBack();
             \Log::error('changeStatus failed', [
-                'order_id' => $orderId,
+                'order_id' => $order,
                 'payload'  => $request->all(),
                 'error'    => $e->getMessage(),
             ]);
