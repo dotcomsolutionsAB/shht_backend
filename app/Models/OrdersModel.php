@@ -34,4 +34,9 @@ class OrdersModel extends Model
     {
         return $this->belongsTo(User::class, 'dispatched_by', 'id');
     }
+
+    public function invoiceRef()
+    {
+        return $this->belongsTo(InvoiceModel::class, 'invoice', 'id');
+    }
 }
