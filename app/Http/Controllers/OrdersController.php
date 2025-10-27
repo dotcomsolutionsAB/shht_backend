@@ -927,22 +927,34 @@ class OrdersController extends Controller
             $spreadsheet = new Spreadsheet();
             $sheet = $spreadsheet->getActiveSheet();
 
-            // Headings
+            // Headings in camelCase
             $headings = [
-                'CLIENT',
-                'CLIENT CONTACT PERSON',
-                'SO NUMBER',
-                'ORDER NUMBER',
-                'ORDER DATE',
-                'CHECKED BY',
-                'STATUS',
-                'INVOICE NUMBER',
-                'INVOICE DATE',
-                'DISPATCHED BY',
-                'DRIVE LINK',
+                'client',
+                'clientContactPerson',
+                'soNumber',
+                'orderNumber',
+                'orderDate',
+                'checkedBy',
+                'status',
+                'invoiceNumber',
+                'invoiceDate',
+                'dispatchedBy',
+                'driveLink',
             ];
 
             $sheet->fromArray($headings, null, 'A1');
+
+            // Format heading style (bold + border)
+            $headerStyle = [
+                'font' => ['bold' => true],
+                'borders' => [
+                    'allBorders' => [
+                        'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
+                        'color' => ['argb' => '000000'],
+                    ],
+                ],
+            ];
+            $sheet->getStyle('A1:K1')->applyFromArray($headerStyle);
 
             // Data rows
             $rowNum = 2;
@@ -952,14 +964,26 @@ class OrdersController extends Controller
                     $r->contact_name,
                     $r->so_number,
                     $r->order_number,
-                    $r->order_date,
+                    // Format date as Indian format (dd-mm-yyyy)
+                    \Carbon\Carbon::parse($r->order_date)->format('d-m-Y'),
                     $r->checked_by_name,
                     $r->status,
                     $r->invoice_number,
-                    $r->invoice_date,
+                    $r->invoice_date ? \Carbon\Carbon::parse($r->invoice_date)->format('d-m-Y') : '',
                     $r->dispatched_by_name,
                     $r->drive_link,
                 ], null, 'A' . $rowNum);
+
+                // Apply border to each data row
+                $sheet->getStyle("A{$rowNum}:K{$rowNum}")->applyFromArray([
+                    'borders' => [
+                        'allBorders' => [
+                            'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
+                            'color' => ['argb' => '000000'],
+                        ],
+                    ],
+                ]);
+
                 $rowNum++;
             }
 
@@ -970,11 +994,18 @@ class OrdersController extends Controller
 
             // Save file
             $filename = 'orders_export_' . now()->format('Ymd_His') . '.xlsx';
-            $path = storage_path('app/public/' . $directory . '/' . $filename);
+            $directory = 'uploads/order';
+
+            if (!Storage::disk('public')->exists($directory)) {
+                Storage::disk('public')->makeDirectory($directory);
+            }
+
+            $path = storage_path("app/public/{$directory}/{$filename}");
             $writer = new Xlsx($spreadsheet);
             $writer->save($path);
 
-            $publicUrl = url('storage/' . $directory . '/' . $filename);
+            // Public URL using Laravel's disk
+            $publicUrl = Storage::disk('public')->url("{$directory}/{$filename}");
 
             return response()->json([
                 'code'      => 200,
