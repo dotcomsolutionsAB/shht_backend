@@ -525,10 +525,23 @@ class InvoiceController extends Controller
     /** Create invoice for internal use (no HTTP) */
     public function makeInvoice(array $data): InvoiceModel
     {
-        // fake a request object that satisfies your own validation
+        // fake request that satisfies your own validation
         $req = new Request($data);
-        $res = $this->create($req);          // re-use existing logic
-        return $res->getData()->data;        // the invoice object you already return
+
+        // --- use the exact same rules you wrote in create() ---
+        $req->validate([
+            'order'          => ['required', 'integer', 'exists:t_orders,id'],
+            'invoice_number' => ['required', 'string', 'max:255', 'unique:t_invoice,invoice_number'],
+            'invoice_date'   => ['required', 'date'],
+            'billed_by'      => ['required', 'integer', 'exists:users,id'],
+        ]);
+        
+        return DB::transaction(fn () => InvoiceModel::create([
+            'order'          => (int) $req->input('order'),
+            'invoice_number' => $req->input('invoice_number'),
+            'invoice_date'   => $req->input('invoice_date'),
+            'billed_by'      => (int) $req->input('billed_by'),
+        ]));
     }
 }
 
