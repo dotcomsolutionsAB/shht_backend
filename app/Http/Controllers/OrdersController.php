@@ -929,17 +929,17 @@ class OrdersController extends Controller
 
             // Headings in camelCase
             $headings = [
-                'client',
-                'clientContactPerson',
-                'soNumber',
-                'orderNumber',
-                'orderDate',
-                'checkedBy',
-                'status',
-                'invoiceNumber',
-                'invoiceDate',
-                'dispatchedBy',
-                'driveLink',
+                'Client',
+                'ClientContactPerson',
+                'SONumber',
+                'OrderNumber',
+                'OrderDate',
+                'CheckedBy',
+                'Status',
+                'InvoiceNumber',
+                'InvoiceDate',
+                'DispatchedBy',
+                'DriveLink',
             ];
 
             $sheet->fromArray($headings, null, 'A1');
