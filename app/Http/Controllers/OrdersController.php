@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Storage;
 
 class OrdersController extends Controller
 {
@@ -731,4 +732,138 @@ class OrdersController extends Controller
         ][$current] ?? [];
     }
 
+    // export order
+    public function exportCsv(Request $request)
+    {
+        try {
+            // Optional filters (same as before)
+            $search       = trim((string) $request->input('search', ''));
+            $clientId     = $request->input('client');
+            $status       = $request->input('status');
+            $checkedBy    = $request->input('checked_by');
+            $dispatchedBy = $request->input('dispatched_by');
+            $dateFrom     = $request->input('date_from');
+            $dateTo       = $request->input('date_to');
+
+            // Fetch data
+            $q = DB::table('t_orders as o')
+                ->leftJoin('t_clients as c', 'c.id', '=', 'o.client')
+                ->leftJoin('t_clients_contact_person as cp', 'cp.id', '=', 'o.client_contact_person')
+                ->leftJoin('users as u_checked', 'u_checked.id', '=', 'o.checked_by')
+                ->leftJoin('users as u_disp', 'u_disp.id', '=', 'o.dispatched_by')
+                ->leftJoin('t_invoice as inv', 'inv.id', '=', 'o.invoice')
+                ->selectRaw("
+                    c.name               as client_name,
+                    cp.name              as contact_name,
+                    o.so_no              as so_number,
+                    o.order_no           as order_number,
+                    o.order_date         as order_date,
+                    u_checked.name       as checked_by_name,
+                    o.status             as status,
+                    inv.invoice_number   as invoice_number,
+                    inv.invoice_date     as invoice_date,
+                    u_disp.name          as dispatched_by_name,
+                    o.drive_link         as drive_link
+                ")
+                ->orderBy('o.id','desc');
+
+            // Apply filters
+            if ($search !== '') {
+                $q->where(function ($w) use ($search) {
+                    $w->where('o.so_no', 'like', "%{$search}%")
+                      ->orWhere('o.order_no', 'like', "%{$search}%");
+                });
+            }
+            if (!empty($clientId)) {
+                $q->where('o.client', (int) $clientId);
+            }
+            if (!empty($status)) {
+                $q->where('o.status', $status);
+            }
+            if (!empty($checkedBy)) {
+                $q->where('o.checked_by', (int) $checkedBy);
+            }
+            if (!empty($dispatchedBy)) {
+                $q->where('o.dispatched_by', (int) $dispatchedBy);
+            }
+            if (!empty($dateFrom)) {
+                $q->whereDate('o.order_date', '>=', $dateFrom);
+            }
+            if (!empty($dateTo)) {
+                $q->whereDate('o.order_date', '<=', $dateTo);
+            }
+
+            $rows = $q->get();
+
+            // Ensure folder exists
+            $directory = 'uploads/order';
+            if (!Storage::disk('public')->exists($directory)) {
+                Storage::disk('public')->makeDirectory($directory);
+            }
+
+            // Filename
+            $filename = 'orders_export_' . now()->format('Ymd_His') . '.csv';
+            $fullPath = $directory . '/' . $filename;
+
+            // Create and save CSV file
+            $handle = fopen(storage_path('app/public/' . $fullPath), 'w');
+
+            // Headings
+            fputcsv($handle, [
+                'CLIENT',
+                'CLIENT CONTACT PERSON',
+                'SO NUMBER',
+                'ORDER NUMBER',
+                'ORDER DATE',
+                'CHECKED BY',
+                'STATUS',
+                'INVOICE NUMBER',
+                'INVOICE DATE',
+                'DISPATCHED BY',
+                'DRIVE LINK',
+            ]);
+
+            // Rows
+            foreach ($rows as $r) {
+                fputcsv($handle, [
+                    $r->client_name,
+                    $r->contact_name,
+                    $r->so_number,
+                    $r->order_number,
+                    $r->order_date,
+                    $r->checked_by_name,
+                    $r->status,
+                    $r->invoice_number,
+                    $r->invoice_date,
+                    $r->dispatched_by_name,
+                    $r->drive_link,
+                ]);
+            }
+
+            fclose($handle);
+
+            // Public URL
+            $publicUrl = url('storage/' . $fullPath);
+
+            return response()->json([
+                'code'    => 200,
+                'status'  => true,
+                'message' => 'Orders exported successfully.',
+                'file_url'=> $publicUrl,
+            ], 200);
+
+        } catch (\Throwable $e) {
+            Log::error('Orders export failed', [
+                'error' => $e->getMessage(),
+                'file'  => $e->getFile(),
+                'line'  => $e->getLine(),
+            ]);
+
+            return response()->json([
+                'code'    => 500,
+                'status'  => false,
+                'message' => 'Something went wrong while exporting orders.',
+            ], 500);
+        }
+    }
 }
