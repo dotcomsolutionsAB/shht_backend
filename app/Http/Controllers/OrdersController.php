@@ -676,7 +676,7 @@ class OrdersController extends Controller
                                     'billed_by'      => $user->id,
                                 ]);
 
-                    $extra['invoice_id'] = $invoice->id;
+                    $extra['invoice'] = $invoice->id;
                     break;
             }
 
