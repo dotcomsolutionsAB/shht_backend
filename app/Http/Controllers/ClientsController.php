@@ -23,6 +23,7 @@ class ClientsController extends Controller
                 'city'          => ['required', 'string', 'max:255'],
                 'state'         => ['required', 'string', 'max:255'],
                 'rm'            => ['required', 'integer', 'exists:users,id'], // RM must exist in users
+                'sales_person'  => ['required', 'integer', 'exists:users,id'], // Sales Person must exist in users
             ]);
 
             // 🔹 2. Insert record in a transaction
@@ -35,6 +36,7 @@ class ClientsController extends Controller
                     'city'          => $request->input('city'),
                     'state'         => $request->input('state'),
                     'rm'            => (int) $request->input('rm'),
+                    'sales_person'  => (int) $request->input('sales_person'),
                 ]);
             });
 
@@ -51,6 +53,7 @@ class ClientsController extends Controller
                     'city'          => $client->city,
                     'state'         => $client->state,
                     'rm'            => $client->rm,
+                    'sales_person'  => $client->sales_person,
                 ],
             ], 201);
 
@@ -84,9 +87,10 @@ class ClientsController extends Controller
                 $client = ClientsModel::with([
                         'categoryRef:id,name',
                         'subCategoryRef:id,name',
-                        'rmRef:id,name,username,email'
+                        'rmRef:id,name,username,email',
+                        'salesRef:id,name,username,email'
                     ])
-                    ->select('id','name','category','sub_category','tags','city','state','rm')
+                    ->select('id','name','category','sub_category','tags','city','state','rm', 'sales_person')
                     ->find($id);
 
                 if (! $client) {
@@ -123,6 +127,9 @@ class ClientsController extends Controller
                     'state' => $client->state,
                     'rm'    => $client->rmRef
                         ? ['id' => $client->rmRef->id, 'name' => $client->rmRef->name, 'username' => $client->rmRef->username]
+                        : null,
+                    'sales_person'    => $client->salesRef
+                        ? ['id' => $client->salesRef->id, 'name' => $client->salesRef->name, 'username' => $client->salesRef->username]
                         : null,
                 ];
 
@@ -162,8 +169,9 @@ class ClientsController extends Controller
                     'categoryRef:id,name',
                     'subCategoryRef:id,name',
                     'rmRef:id,name,username,email',
+                    'salesRef:id,name,username,email'
                 ])
-                ->select('id','name','category','sub_category','tags','city','state','rm','created_at','updated_at')
+                ->select('id','name','category','sub_category','tags','city','state','rm','sales_person','created_at','updated_at')
                 ->orderBy('id','desc');
 
             // ----- Filters -----
@@ -241,8 +249,9 @@ class ClientsController extends Controller
                     'rm'    => $c->rmRef
                         ? ['id' => $c->rmRef->id, 'name' => $c->rmRef->name, 'username' => $c->rmRef->username]
                         : null,
-                    'created_at' => $c->created_at,
-                    'updated_at' => $c->updated_at,
+                    'sales_person'    => $c->salesRef
+                        ? ['id' => $c->salesRef->id, 'name' => $c->salesRef->name, 'username' => $c->salesRef->username]
+                        : null,
                 ];
             });
 
@@ -292,6 +301,7 @@ class ClientsController extends Controller
                 'city'          => ['required','string','max:255'],
                 'state'         => ['required','string','max:255'],
                 'rm'            => ['required','integer','exists:users,id'],
+                'sales_person'  => ['required','integer','exists:users,id'],
             ]);
 
             // Step 3: Merge inputs with old record (fallback logic)
@@ -303,6 +313,7 @@ class ClientsController extends Controller
                 'city'          => $request->input('city', $client->city),
                 'state'         => $request->input('state', $client->state),
                 'rm'            => $request->input('rm', $client->rm),
+                'sales_person'  => $request->input('sales_person', $client->rm),
             ];
 
             // Step 4: Update safely in a transaction
@@ -315,6 +326,7 @@ class ClientsController extends Controller
                     'categoryRef:id,name',
                     'subCategoryRef:id,name',
                     'rmRef:id,name,username,email',
+                    'salesRef:id,name,username,email',
                 ])->find($id);
 
             // Parse tags → object list
@@ -343,6 +355,9 @@ class ClientsController extends Controller
                 'state'        => $fresh->state,
                 'rm'           => $fresh->rmRef
                                     ? ['id'=>$fresh->rmRef->id, 'name'=>$fresh->rmRef->name, 'username'=>$fresh->rmRef->username]
+                                    : null,
+                'sales_person' => $fresh->salesRef
+                                    ? ['id'=>$fresh->salesRef->id, 'name'=>$fresh->salesRef->name, 'username'=>$fresh->salesRef->username]
                                     : null,
             ];
 
@@ -383,8 +398,9 @@ class ClientsController extends Controller
                     'categoryRef:id,name',
                     'subCategoryRef:id,name',
                     'rmRef:id,name,username,email',
+                    'salesRef:id,name,username,email',
                 ])
-                ->select('id','name','category','sub_category','tags','city','state','rm')
+                ->select('id','name','category','sub_category','tags','city','state','rm','sales_person')
                 ->find($id);
 
             if (! $client) {
@@ -425,6 +441,11 @@ class ClientsController extends Controller
                     'id' => $client->rmRef->id,
                     'name' => $client->rmRef->name,
                     'username' => $client->rmRef->username,
+                ] : null,
+                'sales_person' => $client->salesRef ? [
+                    'id' => $client->salesRef->id,
+                    'name' => $client->salesRef->name,
+                    'username' => $client->salesRef->username,
                 ] : null,
             ];
 

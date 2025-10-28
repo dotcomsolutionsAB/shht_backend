@@ -8,7 +8,7 @@ class ClientsModel extends Model
 {
     //
     protected $table = 't_clients';
-    protected $fillable = ['name', 'category', 'sub_category', 'tags', 'city', 'state', 'rm'];
+    protected $fillable = ['name', 'category', 'sub_category', 'tags', 'city', 'state', 'rm', 'sales_person'];
 
     public function categoryRef()
     {
@@ -23,6 +23,12 @@ class ClientsModel extends Model
     public function rmRef()
     {
         // RM stored as users.id
+        return $this->belongsTo(User::class, 'rm', 'id');
+    }
+
+    public function salesRef()
+    {
+        // Sales Person stored as users.id
         return $this->belongsTo(User::class, 'rm', 'id');
     }
 }

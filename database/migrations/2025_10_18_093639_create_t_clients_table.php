@@ -20,6 +20,7 @@ return new class extends Migration
             $table->string('city');
             $table->string('state');
             $table->unsignedBigInteger('rm');
+            $table->unsignedBigInteger('sales_person');
             $table->timestamps();
         });
     }
