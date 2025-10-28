@@ -929,6 +929,7 @@ class OrdersController extends Controller
 
             // Headings in camelCase
             $headings = [
+                'SL No',
                 'Client',
                 'ClientContactPerson',
                 'SONumber',
@@ -943,28 +944,18 @@ class OrdersController extends Controller
             ];
 
             $sheet->fromArray($headings, null, 'A1');
+            $sheet->getStyle('A1:L1')->applyFromArray($headerStyle);
 
-            // Format heading style (bold + border)
-            $headerStyle = [
-                'font' => ['bold' => true],
-                'borders' => [
-                    'allBorders' => [
-                        'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
-                        'color' => ['argb' => '000000'],
-                    ],
-                ],
-            ];
-            $sheet->getStyle('A1:K1')->applyFromArray($headerStyle);
-
-            // Data rows
+            // ---------- DATA ROWS ----------
             $rowNum = 2;
+            $sl     = 1;                                 // running serial
             foreach ($rows as $r) {
                 $sheet->fromArray([
+                    $sl,                                 // <-- first column
                     $r->client_name,
                     $r->contact_name,
                     $r->so_number,
                     $r->order_number,
-                    // Format date as Indian format (dd-mm-yyyy)
                     \Carbon\Carbon::parse($r->order_date)->format('d-m-Y'),
                     $r->checked_by_name,
                     $r->status,
@@ -974,8 +965,8 @@ class OrdersController extends Controller
                     $r->drive_link,
                 ], null, 'A' . $rowNum);
 
-                // Apply border to each data row
-                $sheet->getStyle("A{$rowNum}:K{$rowNum}")->applyFromArray([
+                // borders: A to L  (12 columns now)
+                $sheet->getStyle("A{$rowNum}:L{$rowNum}")->applyFromArray([
                     'borders' => [
                         'allBorders' => [
                             'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
@@ -985,10 +976,11 @@ class OrdersController extends Controller
                 ]);
 
                 $rowNum++;
+                $sl++;
             }
 
-            // Auto-size columns
-            foreach (range('A', 'K') as $col) {
+            // ---------- AUTO-SIZE ----------
+            foreach (range('A', 'L') as $col) {          // L instead of K
                 $sheet->getColumnDimension($col)->setAutoSize(true);
             }
 

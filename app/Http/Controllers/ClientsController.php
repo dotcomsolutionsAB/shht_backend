@@ -5,8 +5,11 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 use App\Models\ClientsModel;
-use Illuminate\Http\Request;
 use App\Models\TagsModel;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use Symfony\Component\HttpFoundation\StreamedResponse;
+use Illuminate\Http\Request;
 
 class ClientsController extends Controller
 {
@@ -473,5 +476,145 @@ class ClientsController extends Controller
                 'message' => 'Something went wrong while deleting client.',
             ], 500);
         }
+    }
+
+    // export
+    public function exportExcel(Request $request): StreamedResponse
+    {
+        /* ---------- 1.  identical filter helpers as in fetch() ---------- */
+        $search      = trim((string) $request->input('search', ''));
+        $categoryRaw = $request->input('category');   // "1,5,9"
+        $subCatRaw   = $request->input('sub_category');
+        $tagRaw      = $request->input('tags');
+        $rmId        = $request->input('rm');
+        $dateFrom    = $request->input('date_from');  // Y-m-d
+        $dateTo      = $request->input('date_to');
+
+        $toIntArray = fn ($str) => $str
+            ? array_map('intval', array_filter(explode(',', $str)))
+            : [];
+
+        $categoryIds = $toIntArray($categoryRaw);
+        $subCatIds   = $toIntArray($subCatRaw);
+        $tagIds      = $toIntArray($tagRaw);
+
+        /* ---------- 2.  build identical query (no limit/offset) ---------- */
+        $q = ClientsModel::with([
+                'categoryRef:id,name',
+                'subCategoryRef:id,name',
+                'rmRef:id,name,username,email',
+                'salesRef:id,name,username,email'
+            ])
+            ->select('id','name','category','sub_category','tags','city','state','rm','sales_person','created_at')
+            ->orderBy('id','desc');
+
+        if ($search !== '') {
+            $q->where('name', 'like', "%{$search}%");
+        }
+        if ($categoryIds) {
+            $q->whereIn('category', $categoryIds);
+        }
+        if ($subCatIds) {
+            $q->whereIn('sub_category', $subCatIds);
+        }
+        if ($tagIds) {
+            $q->where(function ($q) use ($tagIds) {
+                foreach ($tagIds as $tid) {
+                    $q->orWhereRaw('FIND_IN_SET(?, tags)', [$tid]);
+                }
+            });
+        }
+        if (!empty($rmId)) {
+            $q->where('rm', (int) $rmId);
+        }
+        if (!empty($dateFrom)) {
+            $q->whereDate('created_at', '>=', $dateFrom);
+        }
+        if (!empty($dateTo)) {
+            $q->whereDate('created_at', '<=', $dateTo);
+        }
+
+        $rows = $q->get();   // everything that matches filters
+
+        /* ---------- 3.  prepare Excel ---------- */
+        $spreadsheet = new Spreadsheet();
+        $sheet       = $spreadsheet->getActiveSheet();
+
+        // headers
+        $headers = [
+            'SL No','Client','Category','Sub Category','Tags','City','State','RM','Sales Person'
+        ];
+        $sheet->fromArray($headers, null, 'A1');
+        $sheet->getStyle('A1:J1')->applyFromArray([
+            'font' => ['bold' => true],
+            'borders' => [
+                'allBorders' => [
+                    'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
+                    'color' => ['argb' => '000000'],
+                ],
+            ],
+        ]);
+
+        // data
+        $rowNo = 2;
+        $sl    = 1;                       // running serial
+        foreach ($rows as $c) {
+            $tagNames = collect(explode(',', (string) $c->tags))
+                ->map(fn($v) => trim($v))
+                ->filter()
+                ->map(fn($id) => TagsModel::find((int)$id)?->name)
+                ->filter()
+                ->implode(', ');
+
+            $sheet->fromArray([
+                $sl,                      // SL NO
+                $c->name,
+                $c->categoryRef?->name,
+                $c->subCategoryRef?->name,
+                $tagNames,
+                $c->city,
+                $c->state,
+                $c->rmRef?->name,
+                $c->salesRef?->name,
+            ], null, "A{$rowNo}");
+
+            $sheet->getStyle("A{$rowNo}:I{$rowNo}")->applyFromArray([   // 9 columns now
+                'borders' => [
+                    'allBorders' => [
+                        'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
+                        'color' => ['argb' => '000000'],
+                    ],
+                ],
+            ]);
+
+            $rowNo++;
+            $sl++;
+        }
+
+        /* adjust auto-size range */
+        foreach (range('A','I') as $col) {
+            $sheet->getColumnDimension($col)->setAutoSize(true);
+        }
+
+        /* ---------- 4.  save to disk & return URL ---------- */
+        $filename  = 'clients_export_' . now()->format('Ymd_His') . '.xlsx';
+        $directory = 'clients';                      // ← storage/app/public/clients/
+
+        if (!Storage::disk('public')->exists($directory)) {
+            Storage::disk('public')->makeDirectory($directory);
+        }
+
+        $path = storage_path("app/public/{$directory}/{$filename}");
+        $writer = new Xlsx($spreadsheet);
+        $writer->save($path);
+
+        $publicUrl = Storage::disk('public')->url("{$directory}/{$filename}");
+
+        return response()->json([
+            'code'     => 200,
+            'status'   => true,
+            'message'  => 'Clients exported successfully.',
+            'file_url' => $publicUrl,
+        ], 200);
     }
 }

@@ -7,6 +7,9 @@ use Illuminate\Validation\Rule;
 use App\Models\InvoiceModel;     // t_invoice
 use App\Models\User;
 use App\Models\OrdersModel;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Http\Request;
 
 class InvoiceController extends Controller
@@ -543,6 +546,137 @@ class InvoiceController extends Controller
             'billed_by'      => (int) $req->input('billed_by'),
         ]));
     }
+
+    // export
+    public function exportExcel(Request $request)
+    {
+        /* ---------- 1.  identical filter helpers as in fetch() ---------- */
+        $search       = trim((string) $request->input('search', ''));
+        $billedBy     = $request->input('billed_by');
+        $dispatchedBy = $request->input('dispatched_by');
+        $dateFrom     = $request->input('date_from');
+        $dateTo       = $request->input('date_to');
+
+        /* ---------- 2.  build identical query (no limit/offset) ---------- */
+        $q = InvoiceModel::with([
+                'orderRef.clientRef:id,name',                       // need client name
+                'orderRef:id,so_no,order_no,status,dispatched_by',  // keep minimal
+                'billedByRef:id,name,username',
+            ])
+            ->select('id', 'order', 'invoice_number', 'invoice_date', 'billed_by', 'created_at')
+            ->orderBy('id', 'desc');
+
+        /* ------------------ apply filters (same as fetch) ------------------ */
+        if ($search !== '') {
+            $q->where(function ($w) use ($search) {
+                $w->where('invoice_number', 'like', "%{$search}%")
+                ->orWhereHas('orderRef', function ($q) use ($search) {
+                    $q->where('order_no', 'like', "%{$search}%")
+                        ->orWhereHas('clientRef', fn($q) => $q->where('name', 'like', "%{$search}%"));
+                });
+            });
+        }
+        if (!empty($billedBy)) {
+            $q->where('billed_by', (int) $billedBy);
+        }
+        if (!empty($dispatchedBy)) {
+            $q->whereHas('orderRef', fn($q) => $q->where('dispatched_by', (int) $dispatchedBy));
+        }
+        if (!empty($dateFrom)) {
+            $q->whereDate('invoice_date', '>=', $dateFrom);
+        }
+        if (!empty($dateTo)) {
+            $q->whereDate('invoice_date', '<=', $dateTo);
+        }
+
+        $rows = $q->get();   // everything that matches filters
+
+        /* ---------- 3.  eager-load dispatcher users in one go ---------- */
+        $dispatchIds = $rows->pluck('orderRef.dispatched_by')->filter()->unique()->values();
+        $dispatchers = User::whereIn('id', $dispatchIds)
+                                    ->get(['id', 'name', 'username'])
+                                    ->keyBy('id');
+
+        /* ---------- 4.  prepare Excel ---------- */
+        $spreadsheet = new Spreadsheet();
+        $sheet       = $spreadsheet->getActiveSheet();
+
+        // headers
+        $headers = [
+            'Sl No.',
+            'Client',
+            'Order',
+            'So Number',
+            'Invoice Number',
+            'Invoice Date',
+            'Billed By',
+            'Dispatched By',
+        ];
+        $sheet->fromArray($headers, null, 'A1');
+        $sheet->getStyle('A1:H1')->applyFromArray([
+            'font' => ['bold' => true],
+            'borders' => [
+                'allBorders' => [
+                    'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
+                    'color' => ['argb' => '000000'],
+                ],
+            ],
+        ]);
+
+        // data
+        $rowNo = 2;
+        $sl    = 1;
+        foreach ($rows as $inv) {
+            $dispatcher = $inv->orderRef && $inv->orderRef->dispatched_by
+                        ? $dispatchers->get($inv->orderRef->dispatched_by)
+                        : null;
+
+            $sheet->fromArray([
+                $sl,
+                $inv->orderRef->clientRef->name ?? '',
+                $inv->orderRef->order_no ?? '',
+                $inv->orderRef->so_no ?? '',
+                $inv->invoice_number,
+                \Carbon\Carbon::parse($inv->invoice_date)->format('d-m-Y'),
+                $inv->billedByRef->name ?? '',
+                $dispatcher->name ?? '',
+            ], null, "A{$rowNo}");
+
+            $sheet->getStyle("A{$rowNo}:H{$rowNo}")->applyFromArray([
+                'borders' => [
+                    'allBorders' => [
+                        'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
+                        'color' => ['argb' => '000000'],
+                    ],
+                ],
+            ]);
+            $rowNo++;
+            $sl++;
+        }
+
+        foreach (range('A','H') as $col) {
+            $sheet->getColumnDimension($col)->setAutoSize(true);
+        }
+
+        /* ---------- 5.  save to disk & return URL ---------- */
+        $filename  = 'invoices_export_' . now()->format('Ymd_His') . '.xlsx';
+        $directory = 'invoice';                      // storage/app/public/invoice/
+
+        if (!Storage::disk('public')->exists($directory)) {
+            Storage::disk('public')->makeDirectory($directory);
+        }
+
+        $path = storage_path("app/public/{$directory}/{$filename}");
+        $writer = new Xlsx($spreadsheet);
+        $writer->save($path);
+
+        $publicUrl = Storage::disk('public')->url("{$directory}/{$filename}");
+
+        return response()->json([
+            'code'     => 200,
+            'status'   => true,
+            'message'  => 'Invoices exported successfully.',
+            'file_url' => $publicUrl,
+        ], 200);
+    }
 }
-
-

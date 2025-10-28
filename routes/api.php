@@ -31,6 +31,7 @@ Route::middleware('auth:sanctum', 'role:admin,sales,staff,dispatch')->group(func
         Route::post('/update/{id}', [UserController::class, 'edit']);
         Route::delete('/delete/{id}', [UserController::class, 'delete']);
         Route::post('/reset_password', [AuthController::class, 'updatePassword']);
+        Route::post('/export', [UserController::class, 'exportExcel']);
     });
 
     Route::post('/logout', [AuthController::class, 'logout']);
@@ -65,6 +66,7 @@ Route::middleware('auth:sanctum', 'role:admin,sales,staff,dispatch')->group(func
         Route::post('/retrieve/{id?}', [ClientsController::class, 'fetch']);
         Route::post('/update/{id}', [ClientsController::class, 'edit']);
         Route::delete('/delete/{id}', [ClientsController::class, 'delete']);
+        Route::post('/export', [ClientsController::class, 'exportExcel']);
 
         // clients-contact-person route
         Route::prefix('contact_person')->group(function () {
@@ -100,6 +102,7 @@ Route::middleware('auth:sanctum', 'role:admin,sales,staff,dispatch')->group(func
         Route::post('/retrieve/{id?}', [InvoiceController::class, 'fetch']);
         Route::post('/update/{id}', [InvoiceController::class, 'edit']);
         Route::delete('/delete/{id}', [InvoiceController::class, 'delete']);
+        Route::post('/export', [InvoiceController::class, 'exportExcel']);
     });
 });
 

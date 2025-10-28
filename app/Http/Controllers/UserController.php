@@ -4,11 +4,14 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use App\Models\OrdersModel;
 use App\Models\ClientsModel;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Http\Request;
 
 class UserController extends Controller
 {
@@ -249,6 +252,115 @@ class UserController extends Controller
                 'success' => false,
                 'message' => 'Something went wrong while deleting user!',
                 'error'   => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    // export
+    public function exportExcel(Request $request)
+    {
+        try {
+            /* ---------- 1.  same search filter as fetch() ---------- */
+            $search = trim((string) $request->input('search', ''));
+
+            $q = User::select('id','name','email','username','mobile','order_views','change_status')
+                ->orderBy('id','desc');
+
+            if ($search !== '') {
+                $q->where(function ($w) use ($search) {
+                    $w->where('name', 'like', "%{$search}%")
+                    ->orWhere('username', 'like', "%{$search}%")
+                    ->orWhere('mobile', 'like', "%{$search}%");
+                });
+            }
+
+            $rows = $q->get();   // everything that matches filters
+
+            /* ---------- 2.  Excel ---------- */
+            $spreadsheet = new Spreadsheet();
+            $sheet       = $spreadsheet->getActiveSheet();
+
+            // headers
+            $headers = [
+                'Sl. No.',
+                'Users',
+                'Role',
+                'Mobile',
+                'View',
+                'View Global',
+            ];
+            $sheet->fromArray($headers, null, 'A1');
+            $sheet->getStyle('A1:F1')->applyFromArray([
+                'font' => ['bold' => true],
+                'borders' => [
+                    'allBorders' => [
+                        'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
+                        'color' => ['argb' => '000000'],
+                    ],
+                ],
+            ]);
+
+            // data
+            $rowNo = 2;
+            $sl    = 1;
+            foreach ($rows as $u) {
+                $sheet->fromArray([
+                    $sl,
+                    $u->name,                       // Users
+                    'User',                         // Role (change if you have real roles)
+                    $u->mobile,
+                    $u->order_views ? 'Yes' : 'No', // View
+                    $u->change_status ? 'Yes' : 'No', // View Global
+                ], null, "A{$rowNo}");
+
+                $sheet->getStyle("A{$rowNo}:F{$rowNo}")->applyFromArray([
+                    'borders' => [
+                        'allBorders' => [
+                            'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
+                            'color' => ['argb' => '000000'],
+                        ],
+                    ],
+                ]);
+                $rowNo++;
+                $sl++;
+            }
+
+            foreach (range('A','F') as $col) {
+                $sheet->getColumnDimension($col)->setAutoSize(true);
+            }
+
+            /* ---------- 3.  save to disk & return URL ---------- */
+            $filename  = 'users_export_' . now()->format('Ymd_His') . '.xlsx';
+            $directory = 'users';                      // storage/app/public/users/
+
+            if (!Storage::disk('public')->exists($directory)) {
+                Storage::disk('public')->makeDirectory($directory);
+            }
+
+            $path = storage_path("app/public/{$directory}/{$filename}");
+            $writer = new Xlsx($spreadsheet);
+            $writer->save($path);
+
+            $publicUrl = Storage::disk('public')->url("{$directory}/{$filename}");
+
+            return response()->json([
+                'code'     => 200,
+                'status'   => true,
+                'message'  => 'Users exported successfully.',
+                'file_url' => $publicUrl,
+            ], 200);
+
+        } catch (\Throwable $e) {
+            \Log::error('Users Excel export failed', [
+                'error' => $e->getMessage(),
+                'file'  => $e->getFile(),
+                'line'  => $e->getLine(),
+            ]);
+
+            return response()->json([
+                'code'    => 500,
+                'status'  => false,
+                'message' => 'Something went wrong while exporting Excel.',
             ], 500);
         }
     }
