@@ -1000,64 +1000,44 @@ class OrdersController extends Controller
             $status = strtolower(trim($r->status));   // snake_case from DB
             $cell   = "H{$rowNum}";
 
-            switch ($status) {
-                /*  DB values first – add the ones that were missing  */
-                case 'pending':
-                case 'pending':
-                    $bg = 'FFE0A3';   // light orange
-                    $fg = '000000';
-                    break;
+            /* map snake_case -> pretty label */
+            $labelMap = [
+                'pending'         => 'Pending',
+                'dispatched'      => 'Dispatched',
+                'completed'       => 'Completed',
+                'partial_pending' => 'Partial Pending',
+                'out_of_stock'    => 'Out of Stock',
+                'short_closed'    => 'Short Closed',
+                'invoiced'        => 'Invoiced',
+                'cancelled'       => 'Cancelled',
+            ];
 
-                case 'dispatched':
-                    $bg = 'D5E8D4';   // light green
-                    $fg = '000000';
-                    break;
+            /* map pretty label -> hex background (black text for all) */
+            $bgMap = [
+                'Pending'         => 'FFE5E7EB',   // add FF prefix for ARGB
+                'Dispatched'      => 'FFFEF3C7',
+                'Completed'       => 'FFD1FAE5',
+                'Partial Pending' => 'FFFCE7F3',
+                'Out of Stock'    => 'FFFEE2E2',
+                'Short Closed'    => 'FFEFF6FF',
+                'Invoiced'        => 'FF15905F',
+                'Cancelled'       => 'FFFEE2E2',
+            ];
 
-                case 'completed':
-                    $bg = 'C3D9EF';   // light blue
-                    $fg = '000000';
-                    break;
+            $prettyLabel = $labelMap[$status] ?? ucfirst($status);
+            $bgARGB      = $bgMap[$prettyLabel] ?? 'FFFFFFFF';   // fallback white
 
-                case 'partial_pending':   // <-- snake_case
-                case 'partial pending':   // <-- human (keep both)
-                    $bg = 'FFF2CC';   // pale yellow
-                    $fg = '000000';
-                    break;
+            /* write the pretty label into the cell */
+            $sheet->setCellValue($cell, $prettyLabel);
 
-                case 'out_of_stock':      // <-- snake_case
-                case 'out of stock':      // <-- human
-                    $bg = 'F8CECC';   // light red
-                    $fg = '000000';
-                    break;
-
-                case 'short_closed':      // <-- snake_case
-                case 'short closed':      // <-- human
-                    $bg = 'E1D5E7';   // light purple
-                    $fg = '000000';
-                    break;
-
-                case 'invoiced':
-                    $bg = 'FFFFFF';   // white
-                    $fg = '000000';
-                    break;
-
-                case 'cancelled':
-                    $bg = '666666';   // dark grey
-                    $fg = 'FFFFFF';   // white text
-                    break;
-
-                default:                  // anything unforeseen
-                    $bg = 'FFFFFF';
-                    $fg = '000000';
-            }
-
+            /* apply background + black font */
             $sheet->getStyle($cell)->applyFromArray([
                 'fill' => [
                     'fillType'   => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
-                    'startColor' => ['argb' => $bg],
+                    'startColor' => ['argb' => $bgARGB],
                 ],
                 'font' => [
-                    'color' => ['argb' => $fg],
+                    'color' => ['argb' => 'FF000000'], // black
                 ],
             ]);
             /* =========  NEW CODE ENDS HERE  ========= */
