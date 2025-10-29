@@ -197,7 +197,7 @@ class InvoiceController extends Controller
             // ---------- Single invoice by ID ----------
             if ($id !== null) {
                 $inv = InvoiceModel::with([
-                        'orderRef:id,so_no,order_no,status,dispatched_by,client',  // Fetching necessary columns from orders
+                        'orderRef:id,so_no,order_no,status,dispatched_by,client,drive_link',  // Fetching necessary columns from orders
                         'billedByRef:id,name,username',
                         'dispatchedByRef:id,name,username'  // Fetch dispatched_by from User model (assuming it's in `users` table)
                     ])
@@ -368,6 +368,7 @@ class InvoiceController extends Controller
                         'name'     => $inv->billedByRef->name,
                         'username' => $inv->billedByRef->username,
                     ] : null,
+                    'drive_link'     => $inv->orderRef->drive_link ?? null,
                     'created_at'     => $inv->created_at,
                     'updated_at'     => $inv->updated_at,
                 ];
