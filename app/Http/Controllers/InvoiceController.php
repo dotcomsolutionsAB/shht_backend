@@ -586,7 +586,7 @@ class InvoiceController extends Controller
         /* ---------- 2.  build identical query (no limit/offset) ---------- */
         $q = InvoiceModel::with([
                 'orderRef.clientRef:id,name,username',                       // need client name
-                'orderRef:id,so_no,order_no,status,dispatched_by',  // keep minimal
+                'orderRef:id,so_no,order_no,status,dispatched_by,client',  // keep minimal
                 'billedByRef:id,name,username',
             ])
             ->select('id', 'order', 'invoice_number', 'invoice_date', 'billed_by', 'created_at')
@@ -699,10 +699,13 @@ class InvoiceController extends Controller
         $publicUrl = Storage::disk('public')->url("{$directory}/{$filename}");
 
         return response()->json([
-            'code'     => 200,
-            'status'   => true,
-            'message'  => 'Invoices exported successfully.',
-            'file_url' => $publicUrl,
+            'code'    => 200,
+            'success' => true,
+            'message' => 'Invoices exported successfully.',
+            'data'    => [
+                'file_url' => $publicUrl,
+                'count'    => $rows->count(),
+            ],
         ], 200);
     }
 }

@@ -929,7 +929,7 @@ class OrdersController extends Controller
 
             // Headings in camelCase
             $headings = [
-                'SL No',
+                'Sl No',
                 'Client',
                 'ClientContactPerson',
                 'SONumber',
