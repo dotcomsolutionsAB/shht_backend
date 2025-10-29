@@ -7,6 +7,7 @@ use Illuminate\Validation\Rule;
 use App\Models\InvoiceModel;     // t_invoice
 use App\Models\User;
 use App\Models\OrdersModel;
+use App\Models\ClientsModel;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use Illuminate\Support\Facades\Storage;
@@ -270,7 +271,7 @@ class InvoiceController extends Controller
             * 1.  Build the query once (will reuse for count() and get())
             * ----------------------------------------------------------------- */
             $q = InvoiceModel::with([
-                    'orderRef:id,so_no,order_no,status,dispatched_by,client',   // <- still needed
+                    'orderRef:id,so_no,order_no,status,dispatched_by,client,drive_link',   // <- still needed
                     'billedByRef:id,name,username',
                     // dispatcher user will be loaded manually below
                 ])
@@ -343,34 +344,38 @@ class InvoiceController extends Controller
                             ? $dispatchers->get($inv->orderRef->dispatched_by)
                             : null;
 
+                $client = $inv->orderRef && $inv->orderRef->client
+                            ? $clients->get($inv->orderRef->client)
+                            : null;
+
                 return [
                     'id'             => $inv->id,
                     'invoice_number' => $inv->invoice_number,
                     'invoice_date'   => $inv->invoice_date,
                     'order'          => $inv->orderRef ? [
-                    'id'            => $inv->orderRef->id,
-                    'so_no'         => $inv->orderRef->so_no,
-                    'order_no'      => $inv->orderRef->order_no,
-                    'status'        => $inv->orderRef->status,
+                        'id'            => $inv->orderRef->id,
+                        'so_no'         => $inv->orderRef->so_no,
+                        'order_no'      => $inv->orderRef->order_no,
+                        'status'        => $inv->orderRef->status,
                         'dispatched_by' => $dispatcher ? [
                             'id'       => $dispatcher->id,
                             'name'     => $dispatcher->name,
                             'username' => $dispatcher->username,
                         ] : null,
-                        'client'        => $client ? [ // [client+]
+                        'client'        => $client ? [
                             'id'       => $client->id,
                             'name'     => $client->name,
                             'username' => $client->username,
                         ] : null,
+                        'drive_link'    => $inv->orderRef->drive_link ?? null,  // ✅ added drive link
                     ] : null,
-                    'billed_by'      => $inv->billedByRef ? [
+                    'billed_by' => $inv->billedByRef ? [
                         'id'       => $inv->billedByRef->id,
                         'name'     => $inv->billedByRef->name,
                         'username' => $inv->billedByRef->username,
                     ] : null,
-                    'drive_link'     => $inv->orderRef->drive_link ?? null,
-                    'created_at'     => $inv->created_at,
-                    'updated_at'     => $inv->updated_at,
+                    'created_at' => $inv->created_at,
+                    'updated_at' => $inv->updated_at,
                 ];
             });
 
