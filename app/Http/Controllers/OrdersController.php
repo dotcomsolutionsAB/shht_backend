@@ -997,19 +997,58 @@ class OrdersController extends Controller
                 ], null, 'A' . $rowNum);
 
             /* =========  NEW CODE STARTS HERE  ========= */
-            $status = strtolower(trim($r->status));
+            $status = strtolower(trim($r->status));   // snake_case from DB
             $cell   = "H{$rowNum}";
 
             switch ($status) {
-                case 'pending':           $bg = 'FFE0A3'; $fg = '000000'; break;
-                case 'dispatched':        $bg = 'D5E8D4'; $fg = '000000'; break;
-                case 'completed':         $bg = 'C3D9EF'; $fg = '000000'; break;
-                case 'partial pending':   $bg = 'FFF2CC'; $fg = '000000'; break;
-                case 'out of stock':      $bg = 'F8CECC'; $fg = '000000'; break;
-                case 'short closed':      $bg = 'E1D5E7'; $fg = '000000'; break;
-                case 'invoiced':          $bg = 'FFFFFF'; $fg = '000000'; break;
-                case 'cancelled':         $bg = '666666'; $fg = 'FFFFFF'; break;
-                default:                  $bg = 'FFFFFF'; $fg = '000000';
+                /*  DB values first – add the ones that were missing  */
+                case 'pending':
+                case 'pending':
+                    $bg = 'FFE0A3';   // light orange
+                    $fg = '000000';
+                    break;
+
+                case 'dispatched':
+                    $bg = 'D5E8D4';   // light green
+                    $fg = '000000';
+                    break;
+
+                case 'completed':
+                    $bg = 'C3D9EF';   // light blue
+                    $fg = '000000';
+                    break;
+
+                case 'partial_pending':   // <-- snake_case
+                case 'partial pending':   // <-- human (keep both)
+                    $bg = 'FFF2CC';   // pale yellow
+                    $fg = '000000';
+                    break;
+
+                case 'out_of_stock':      // <-- snake_case
+                case 'out of stock':      // <-- human
+                    $bg = 'F8CECC';   // light red
+                    $fg = '000000';
+                    break;
+
+                case 'short_closed':      // <-- snake_case
+                case 'short closed':      // <-- human
+                    $bg = 'E1D5E7';   // light purple
+                    $fg = '000000';
+                    break;
+
+                case 'invoiced':
+                    $bg = 'FFFFFF';   // white
+                    $fg = '000000';
+                    break;
+
+                case 'cancelled':
+                    $bg = '666666';   // dark grey
+                    $fg = 'FFFFFF';   // white text
+                    break;
+
+                default:                  // anything unforeseen
+                    $bg = 'FFFFFF';
+                    $fg = '000000';
             }
 
             $sheet->getStyle($cell)->applyFromArray([
@@ -1022,7 +1061,6 @@ class OrdersController extends Controller
                 ],
             ]);
             /* =========  NEW CODE ENDS HERE  ========= */
-
             // existing border-style block (leave untouched)
             $sheet->getStyle("A{$rowNum}:L{$rowNum}")->applyFromArray([
                 'borders' => [
