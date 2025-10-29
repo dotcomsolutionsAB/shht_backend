@@ -943,6 +943,37 @@ class OrdersController extends Controller
                 'DriveLink',
             ];
 
+            // Define header style (this was missing)
+            $headerStyle = [
+                'font' => [
+                    'bold' => true,
+                    'size' => 11,
+                ],
+                'alignment' => [
+                    'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER,
+                    'vertical'   => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER,
+                ],
+                'borders' => [
+                    'allBorders' => [
+                        'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
+                        'color' => ['argb' => '000000'],
+                    ],
+                ],
+                'fill' => [
+                    'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
+                    'startColor' => ['argb' => 'FFEFEFEF'],
+                ],
+            ];
+
+            $rowBorderStyle = [
+                'borders' => [
+                    'allBorders' => [
+                        'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
+                        'color' => ['argb' => '000000'],
+                    ],
+                ],
+            ];
+
             $sheet->fromArray($headings, null, 'A1');
             $sheet->getStyle('A1:L1')->applyFromArray($headerStyle);
 
@@ -1000,11 +1031,15 @@ class OrdersController extends Controller
             $publicUrl = Storage::disk('public')->url("{$directory}/{$filename}");
 
             return response()->json([
-                'code'      => 200,
-                'status'    => true,
-                'message'   => 'Orders exported successfully.',
-                'file_url'  => $publicUrl,
+                'code'    => 200,
+                'success' => true,
+                'message' => 'Orders exported successfully.',
+                'data'    => [
+                    'file_url' => $publicUrl,
+                    'count'    => $rows->count(),
+                ],
             ], 200);
+
 
         } catch (\Throwable $e) {
             Log::error('Orders Excel export failed', [
@@ -1013,10 +1048,11 @@ class OrdersController extends Controller
                 'line'  => $e->getLine(),
             ]);
 
-            return response()->json([
+           return response()->json([
                 'code'    => 500,
-                'status'  => false,
+                'success' => false,
                 'message' => 'Something went wrong while exporting Excel.',
+                'data'    => [],
             ], 500);
         }
     }

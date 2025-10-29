@@ -480,7 +480,7 @@ class ClientsController extends Controller
     }
 
     // export
-    public function exportExcel(Request $request): StreamedResponse
+    public function exportExcel(Request $request)
     {
         /* ---------- 1.  identical filter helpers as in fetch() ---------- */
         $search      = trim((string) $request->input('search', ''));
