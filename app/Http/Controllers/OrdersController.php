@@ -982,7 +982,7 @@ class OrdersController extends Controller
             $sl     = 1;                                 // running serial
             foreach ($rows as $r) {
                 $sheet->fromArray([
-                    $sl,                                 // <-- first column
+                    $sl,
                     $r->client_name,
                     $r->contact_name,
                     $r->so_number,
@@ -996,20 +996,46 @@ class OrdersController extends Controller
                     $r->drive_link,
                 ], null, 'A' . $rowNum);
 
-                // borders: A to L  (12 columns now)
-                $sheet->getStyle("A{$rowNum}:L{$rowNum}")->applyFromArray([
-                    'borders' => [
-                        'allBorders' => [
-                            'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
-                            'color' => ['argb' => '000000'],
-                        ],
-                    ],
-                ]);
+            /* =========  NEW CODE STARTS HERE  ========= */
+            $status = strtolower(trim($r->status));
+            $cell   = "H{$rowNum}";
 
-                $rowNum++;
-                $sl++;
+            switch ($status) {
+                case 'pending':           $bg = 'FFE0A3'; $fg = '000000'; break;
+                case 'dispatched':        $bg = 'D5E8D4'; $fg = '000000'; break;
+                case 'completed':         $bg = 'C3D9EF'; $fg = '000000'; break;
+                case 'partial pending':   $bg = 'FFF2CC'; $fg = '000000'; break;
+                case 'out of stock':      $bg = 'F8CECC'; $fg = '000000'; break;
+                case 'short closed':      $bg = 'E1D5E7'; $fg = '000000'; break;
+                case 'invoiced':          $bg = 'FFFFFF'; $fg = '000000'; break;
+                case 'cancelled':         $bg = '666666'; $fg = 'FFFFFF'; break;
+                default:                  $bg = 'FFFFFF'; $fg = '000000';
             }
 
+            $sheet->getStyle($cell)->applyFromArray([
+                'fill' => [
+                    'fillType'   => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
+                    'startColor' => ['argb' => $bg],
+                ],
+                'font' => [
+                    'color' => ['argb' => $fg],
+                ],
+            ]);
+            /* =========  NEW CODE ENDS HERE  ========= */
+
+            // existing border-style block (leave untouched)
+            $sheet->getStyle("A{$rowNum}:L{$rowNum}")->applyFromArray([
+                'borders' => [
+                    'allBorders' => [
+                        'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
+                        'color' => ['argb' => '000000'],
+                    ],
+                ],
+            ]);
+
+            $rowNum++;
+            $sl++;
+        }
             // ---------- AUTO-SIZE ----------
             foreach (range('A', 'L') as $col) {          // L instead of K
                 $sheet->getColumnDimension($col)->setAutoSize(true);

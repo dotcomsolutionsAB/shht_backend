@@ -291,17 +291,33 @@ class UserController extends Controller
                 'View Global',
             ];
             $sheet->fromArray($headers, null, 'A1');
+
+            // ✅ Center align headers + bold + border + background
             $sheet->getStyle('A1:F1')->applyFromArray([
-                'font' => ['bold' => true],
+                'font' => [
+                    'bold' => true,
+                    'size' => 11,
+                ],
+                'alignment' => [
+                    'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER,
+                    'vertical'   => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER,
+                ],
                 'borders' => [
                     'allBorders' => [
                         'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
                         'color' => ['argb' => '000000'],
                     ],
                 ],
+                'fill' => [
+                    'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
+                    'startColor' => ['argb' => 'FFEFEFEF'],
+                ],
             ]);
 
-            // Set entire Mobile column (D) to Text format
+            // Optional: increase row height so header looks balanced
+            $sheet->getRowDimension(1)->setRowHeight(22);
+
+            // Keep your existing column D as text format
             $sheet->getStyle('D')->getNumberFormat()->setFormatCode('@');
 
             $rowNo = 2;

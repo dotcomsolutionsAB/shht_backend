@@ -546,15 +546,25 @@ class ClientsController extends Controller
             'SL No','Client','Category','Sub Category','Tags','City','State','RM','Sales Person'
         ];
         $sheet->fromArray($headers, null, 'A1');
-        $sheet->getStyle('A1:J1')->applyFromArray([
-            'font' => ['bold' => true],
+        // ✅ FIX: style only A1:I1 (not J1), also center-align and fill
+        $sheet->getStyle('A1:I1')->applyFromArray([
+            'font' => ['bold' => true, 'size' => 11],
+            'alignment' => [
+                'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER,
+                'vertical'   => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER,
+            ],
             'borders' => [
                 'allBorders' => [
                     'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
                     'color' => ['argb' => '000000'],
                 ],
             ],
+            'fill' => [
+                'fillType'   => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
+                'startColor' => ['argb' => 'FFEFEFEF'],
+            ],
         ]);
+        $sheet->getRowDimension(1)->setRowHeight(22);
 
         // data
         $rowNo = 2;
