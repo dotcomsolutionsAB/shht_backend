@@ -931,16 +931,16 @@ class OrdersController extends Controller
             $headings = [
                 'Sl No',
                 'Client',
-                'ClientContactPerson',
-                'SONumber',
-                'OrderNumber',
-                'OrderDate',
-                'CheckedBy',
+                'Client Contact Person',
+                'SO Number',
+                'Order Number',
+                'Order Date',
+                'Checked By',
                 'Status',
-                'InvoiceNumber',
-                'InvoiceDate',
-                'DispatchedBy',
-                'DriveLink',
+                'Invoice Number',
+                'Invoice Date',
+                'Dispatched By',
+                'Drive Link',
             ];
 
             // Define header style (this was missing)
