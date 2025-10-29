@@ -472,7 +472,7 @@ class UserController extends Controller
                 'code'    => 200,
                 'success' => true,
                 'message' => 'Password updated successfully.',
-                'data'    => [],
+                'data'    => ['user_name' => $user->username],
             ], 200);
 
         } catch (\Throwable $e) {
