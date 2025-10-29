@@ -585,7 +585,7 @@ class InvoiceController extends Controller
 
         /* ---------- 2.  build identical query (no limit/offset) ---------- */
         $q = InvoiceModel::with([
-                'orderRef.clientRef:id,name,username',                       // need client name
+                'orderRef.clientRef:id,name',                       // need client name
                 'orderRef:id,so_no,order_no,status,dispatched_by,client',  // keep minimal
                 'billedByRef:id,name,username',
             ])
