@@ -1037,7 +1037,7 @@ class OrdersController extends Controller
                     'startColor' => ['argb' => $bgARGB],
                 ],
                 'font' => [
-                    'color' => ['argb' => 'FF000000'], // black
+                    'color' => ['argb' => $prettyLabel === 'Invoiced' ? 'FFFFFFFF' : 'FF000000'],
                 ],
             ]);
             /* =========  NEW CODE ENDS HERE  ========= */

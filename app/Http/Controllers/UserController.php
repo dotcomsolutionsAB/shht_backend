@@ -439,4 +439,55 @@ class UserController extends Controller
             ], 500);
         }
     }
+
+    // update password
+    /**
+     * Update a user's password by user_id.
+     * Expects: user_id, password, password_confirmation
+     */
+    public function updatePassword(Request $request)
+    {
+        try {
+            $validated = $request->validate([
+                'user_id'               => ['required', 'integer', Rule::exists('users', 'id')],
+                'password'              => ['required', 'string', 'min:8', 'confirmed'], // needs password_confirmation
+            ]);
+
+            // Optional auth guard: allow self or admin
+            // $actor = $request->user();
+            // if (!$actor || ($actor->id !== (int)$validated['user_id'] && $actor->role !== 'admin')) {
+            //     return response()->json([
+            //         'code'    => 403,
+            //         'success' => false,
+            //         'message' => 'Not authorized to update this password.',
+            //         'data'    => [],
+            //     ], 403);
+            // }
+
+            $user = User::find($validated['user_id']);
+            $user->password = Hash::make($validated['password']);
+            $user->save();
+
+            return response()->json([
+                'code'    => 200,
+                'success' => true,
+                'message' => 'Password updated successfully.',
+                'data'    => [],
+            ], 200);
+
+        } catch (\Throwable $e) {
+            Log::error('Update password failed', [
+                'error' => $e->getMessage(),
+                'file'  => $e->getFile(),
+                'line'  => $e->getLine(),
+            ]);
+
+            return response()->json([
+                'code'    => 500,
+                'success' => false,
+                'message' => 'Something went wrong while updating password.',
+                'data'    => [],
+            ], 500);
+        }
+    }
 }

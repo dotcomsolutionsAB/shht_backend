@@ -32,6 +32,7 @@ Route::middleware('auth:sanctum', 'role:admin,sales,staff,dispatch')->group(func
         Route::delete('/delete/{id}', [UserController::class, 'delete']);
         Route::post('/reset_password', [AuthController::class, 'updatePassword']);
         Route::post('/export', [UserController::class, 'exportExcel']);
+        Route::post('/change_password', [UserController::class, 'updatePassword']);
     });
 
     Route::post('/logout', [AuthController::class, 'logout']);
