@@ -612,10 +612,13 @@ class ClientsController extends Controller
         $publicUrl = Storage::disk('public')->url("{$directory}/{$filename}");
 
         return response()->json([
-            'code'     => 200,
-            'status'   => true,
-            'message'  => 'Clients exported successfully.',
-            'file_url' => $publicUrl,
+            'code'    => 200,
+            'success' => true,
+            'message' => 'Clients exported successfully.',
+            'data'    => [
+                'file_url' => $publicUrl,
+                'count'    => $rows->count(),
+            ],
         ], 200);
     }
 }

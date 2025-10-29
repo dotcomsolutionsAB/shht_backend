@@ -197,7 +197,7 @@ class InvoiceController extends Controller
             // ---------- Single invoice by ID ----------
             if ($id !== null) {
                 $inv = InvoiceModel::with([
-                        'orderRef:id,so_no,order_no,status,dispatched_by',  // Fetching necessary columns from orders
+                        'orderRef:id,so_no,order_no,status,dispatched_by,client',  // Fetching necessary columns from orders
                         'billedByRef:id,name,username',
                         'dispatchedByRef:id,name,username'  // Fetch dispatched_by from User model (assuming it's in `users` table)
                     ])
@@ -211,6 +211,20 @@ class InvoiceController extends Controller
                     ], 404);
                 }
 
+                $clientObj = null;
+                if ($inv->orderRef && $inv->orderRef->client) {
+                    $client = ClientsModel::query()
+                        ->select('id','name','username')
+                        ->find($inv->orderRef->client);
+                    if ($client) {
+                        $clientObj = [
+                            'id'       => $client->id,
+                            'name'     => $client->name,
+                            'username' => $client->username,
+                        ];
+                    }
+                }
+
                 $data = [
                     'id'             => $inv->id,
                     'invoice_number' => $inv->invoice_number,
@@ -221,6 +235,7 @@ class InvoiceController extends Controller
                         'order_no'   => $inv->orderRef->order_no,
                         'status'     => $inv->orderRef->status,
                     ] : null,
+                    'client'         => $clientObj,
                     'billed_by'      => $inv->billedByRef ? [
                         'id'       => $inv->billedByRef->id,
                         'name'     => $inv->billedByRef->name,
@@ -255,7 +270,7 @@ class InvoiceController extends Controller
             * 1.  Build the query once (will reuse for count() and get())
             * ----------------------------------------------------------------- */
             $q = InvoiceModel::with([
-                    'orderRef:id,so_no,order_no,status,dispatched_by',   // <- still needed
+                    'orderRef:id,so_no,order_no,status,dispatched_by,client',   // <- still needed
                     'billedByRef:id,name,username',
                     // dispatcher user will be loaded manually below
                 ])
@@ -310,9 +325,15 @@ class InvoiceController extends Controller
                                 ->filter()          // remove nulls
                                 ->unique()
                                 ->values();
-            $dispatchers = \App\Models\User::whereIn('id', $dispatchIds)
+            $dispatchers = User::whereIn('id', $dispatchIds)
                                         ->get(['id', 'name', 'username'])
                                         ->keyBy('id');
+
+            // [client+] bulk load clients
+            $clientIds = $items->pluck('orderRef.client')->filter()->unique()->values();
+            $clients   = ClientsModel::whereIn('id', $clientIds)
+                ->get(['id','name','username'])
+                ->keyBy('id');
 
             /* -----------------------------------------------------------------
             * 5.  Shape the response
@@ -327,14 +348,19 @@ class InvoiceController extends Controller
                     'invoice_number' => $inv->invoice_number,
                     'invoice_date'   => $inv->invoice_date,
                     'order'          => $inv->orderRef ? [
-                        'id'            => $inv->orderRef->id,
-                        'so_no'         => $inv->orderRef->so_no,
-                        'order_no'      => $inv->orderRef->order_no,
-                        'status'        => $inv->orderRef->status,
+                    'id'            => $inv->orderRef->id,
+                    'so_no'         => $inv->orderRef->so_no,
+                    'order_no'      => $inv->orderRef->order_no,
+                    'status'        => $inv->orderRef->status,
                         'dispatched_by' => $dispatcher ? [
                             'id'       => $dispatcher->id,
                             'name'     => $dispatcher->name,
                             'username' => $dispatcher->username,
+                        ] : null,
+                        'client'        => $client ? [ // [client+]
+                            'id'       => $client->id,
+                            'name'     => $client->name,
+                            'username' => $client->username,
                         ] : null,
                     ] : null,
                     'billed_by'      => $inv->billedByRef ? [
@@ -559,7 +585,7 @@ class InvoiceController extends Controller
 
         /* ---------- 2.  build identical query (no limit/offset) ---------- */
         $q = InvoiceModel::with([
-                'orderRef.clientRef:id,name',                       // need client name
+                'orderRef.clientRef:id,name,username',                       // need client name
                 'orderRef:id,so_no,order_no,status,dispatched_by',  // keep minimal
                 'billedByRef:id,name,username',
             ])

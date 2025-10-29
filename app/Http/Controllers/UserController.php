@@ -11,6 +11,7 @@ use Illuminate\Validation\Rule;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use Illuminate\Support\Facades\Storage;
+use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use Illuminate\Http\Request;
 
 class UserController extends Controller
@@ -300,19 +301,26 @@ class UserController extends Controller
                 ],
             ]);
 
-            // data
+            // Set entire Mobile column (D) to Text format
+            $sheet->getStyle('D')->getNumberFormat()->setFormatCode('@');
+
             $rowNo = 2;
             $sl    = 1;
             foreach ($rows as $u) {
+                // You can still use fromArray for convenience
                 $sheet->fromArray([
                     $sl,
-                    $u->name,                       // Users
-                    'User',                         // Role (change if you have real roles)
-                    $u->mobile,
-                    $u->order_views ? 'Yes' : 'No', // View
-                    $u->change_status ? 'Yes' : 'No', // View Global
+                    $u->name,             // Users
+                    'User',               // Role
+                    '',                   // placeholder for Mobile; set explicitly next line
+                    $u->order_views ? 'Yes' : 'No',
+                    $u->change_status ? 'Yes' : 'No',
                 ], null, "A{$rowNo}");
 
+                // Write Mobile explicitly as a STRING (prevents scientific notation)
+                $sheet->setCellValueExplicit("D{$rowNo}", (string) $u->mobile, DataType::TYPE_STRING);
+
+                // borders
                 $sheet->getStyle("A{$rowNo}:F{$rowNo}")->applyFromArray([
                     'borders' => [
                         'allBorders' => [
@@ -321,10 +329,10 @@ class UserController extends Controller
                         ],
                     ],
                 ]);
+
                 $rowNo++;
                 $sl++;
             }
-
             foreach (range('A','F') as $col) {
                 $sheet->getColumnDimension($col)->setAutoSize(true);
             }
@@ -344,10 +352,13 @@ class UserController extends Controller
             $publicUrl = Storage::disk('public')->url("{$directory}/{$filename}");
 
             return response()->json([
-                'code'     => 200,
-                'status'   => true,
-                'message'  => 'Users exported successfully.',
-                'file_url' => $publicUrl,
+                'code'    => 200,
+                'success' => true,
+                'message' => 'Users exported successfully.',
+                'data'    => [
+                    'file_url' => $publicUrl,
+                    'count'    => $rows->count(),
+                ],
             ], 200);
 
         } catch (\Throwable $e) {
@@ -359,8 +370,9 @@ class UserController extends Controller
 
             return response()->json([
                 'code'    => 500,
-                'status'  => false,
+                'success'  => false,
                 'message' => 'Something went wrong while exporting Excel.',
+                'data'    => [],
             ], 500);
         }
     }
