@@ -339,7 +339,7 @@ class InvoiceController extends Controller
             /* -----------------------------------------------------------------
             * 5.  Shape the response
             * ----------------------------------------------------------------- */
-            $data = $items->map(function ($inv) use ($dispatchers) {
+            $data = $items->map(function ($inv) use ($dispatchers, $clients) {
                 $dispatcher = $inv->orderRef && $inv->orderRef->dispatched_by
                             ? $dispatchers->get($inv->orderRef->dispatched_by)
                             : null;
