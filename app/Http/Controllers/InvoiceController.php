@@ -333,7 +333,7 @@ class InvoiceController extends Controller
             // [client+] bulk load clients
             $clientIds = $items->pluck('orderRef.client')->filter()->unique()->values();
             $clients   = ClientsModel::whereIn('id', $clientIds)
-                ->get(['id','name','username'])
+                ->get(['id','name'])
                 ->keyBy('id');
 
             /* -----------------------------------------------------------------
@@ -365,7 +365,6 @@ class InvoiceController extends Controller
                         'client'        => $client ? [
                             'id'       => $client->id,
                             'name'     => $client->name,
-                            'username' => $client->username,
                         ] : null,
                         'drive_link'    => $inv->orderRef->drive_link ?? null,  // ✅ added drive link
                     ] : null,
