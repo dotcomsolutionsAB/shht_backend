@@ -373,8 +373,6 @@ class InvoiceController extends Controller
                         'name'     => $inv->billedByRef->name,
                         'username' => $inv->billedByRef->username,
                     ] : null,
-                    'created_at' => $inv->created_at,
-                    'updated_at' => $inv->updated_at,
                 ];
             });
 

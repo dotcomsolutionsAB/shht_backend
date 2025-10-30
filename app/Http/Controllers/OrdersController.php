@@ -298,8 +298,6 @@ class OrdersController extends Controller
                     'checked_by'    => $o->checkedByRef   ? ['id'=>$o->checkedByRef->id,'name'=>$o->checkedByRef->name,'username'=>$o->checkedByRef->username]     : null,
                     'dispatched_by' => $o->dispatchedByRef? ['id'=>$o->dispatchedByRef->id,'name'=>$o->dispatchedByRef->name,'username'=>$o->dispatchedByRef->username] : null,
                     'drive_link'    => $o->drive_link,
-                    'created_at'    => $o->created_at,
-                    'updated_at'    => $o->updated_at,
                 ];
             });
 
