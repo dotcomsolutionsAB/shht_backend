@@ -31,10 +31,11 @@ class AuthController extends Controller
             $token = $user->createToken('API TOKEN')->plainTextToken; // requires Sanctum
 
             return response()->json([
+                'code'    => 200,
                 'success' => true,
                 'message' => 'User logged in successfully!',
                 'data' => [
-                    'code'        => 200,
+                    'role'        => $user->role,
                     'token'       => $token,
                     'user_id'     => $user->id,
                     'name'        => $user->name,
