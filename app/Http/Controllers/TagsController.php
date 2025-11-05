@@ -81,7 +81,7 @@ class TagsController extends Controller
             $count = $tags->count();
 
             return response()->json([
-                'code'    => 201,
+                'code'    => 200,
                 'status'  => true,
                 'message' => 'Tags fetched successfully.',
                 'total'   => $total,  // before filters

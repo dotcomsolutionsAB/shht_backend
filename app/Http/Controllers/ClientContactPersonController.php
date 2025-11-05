@@ -147,6 +147,7 @@ class ClientContactPersonController extends Controller
             });
 
             return response()->json([
+                'code'    => 200,
                 'status'  => true,
                 'message' => 'Contact persons fetched successfully.',
                 'count'   => $data->count(),
@@ -161,6 +162,7 @@ class ClientContactPersonController extends Controller
             ]);
 
             return response()->json([
+                'code'    => 500,
                 'status'  => false,
                 'message' => 'Something went wrong while fetching contact persons.',
             ], 500);
@@ -241,6 +243,7 @@ class ClientContactPersonController extends Controller
 
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json([
+                'code'    => 422,
                 'status'  => false,
                 'message' => 'Validation error!',
                 'errors'  => $e->errors(),
