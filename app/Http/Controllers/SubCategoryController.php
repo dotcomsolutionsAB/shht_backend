@@ -72,6 +72,7 @@ class SubCategoryController extends Controller
                 ];
 
                 return response()->json([
+                    'code'    => 200,
                     'status'  => true,
                     'message' => 'Sub-category fetched successfully',
                     'data'    => $data,
