@@ -65,10 +65,10 @@ class CounterController extends Controller
 
                 return $counter
                     ? response()->json([
-                        'status' => true, 'message' => 'Counter fetched successfully.', 'data' => $counter,
+                        'code' => 200, 'status' => true, 'message' => 'Counter fetched successfully.', 'data' => $counter,
                       ], 200)
                     : response()->json([
-                        'status' => false, 'message' => 'Counter not found.',
+                        'code' => 404, 'status' => false, 'message' => 'Counter not found.',
                       ], 404);
             }
 
@@ -91,7 +91,7 @@ class CounterController extends Controller
         } catch (\Throwable $e) {
             Log::error('Counter fetch failed', ['err'=>$e->getMessage()]);
             return response()->json([
-                'code' => 200, 'status' => false, 'message' => 'Something went wrong while fetching counters.',
+                'code' => 500, 'status' => false, 'message' => 'Something went wrong while fetching counters.',
             ], 500);
         }
     }
