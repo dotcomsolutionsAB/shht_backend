@@ -59,7 +59,7 @@ class SubCategoryController extends Controller
                     ->find($id);
 
                 if (! $sub) {
-                    return response()->json(['status'=>false,'message'=>'Sub-category not found'], 404);
+                    return response()->json(['code' => 404,'status'=>false,'message'=>'Sub-category not found'], 404);
                 }
 
                 // Shape single item: category as object
