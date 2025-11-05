@@ -112,6 +112,7 @@ class ClientContactPersonController extends Controller
                 ];
 
                 return response()->json([
+                    'code'    => 200,
                     'status'  => true,
                     'message' => 'Contact person fetched successfully.',
                     'data'    => $data,
