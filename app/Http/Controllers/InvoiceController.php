@@ -73,6 +73,7 @@ class InvoiceController extends Controller
 
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json([
+                'code'    => 422,
                 'status'  => false,
                 'message' => 'Validation error!',
                 'errors'  => $e->errors(),
@@ -85,6 +86,7 @@ class InvoiceController extends Controller
             ]);
 
             return response()->json([
+                'code'    => 500,
                 'status'  => false,
                 'message' => 'Something went wrong while creating invoice.',
             ], 500);
@@ -207,6 +209,7 @@ class InvoiceController extends Controller
 
                 if (!$inv) {
                     return response()->json([
+                        'code'    => 404,
                         'status'  => false,
                         'message' => 'Invoice not found.',
                     ], 404);
@@ -252,6 +255,7 @@ class InvoiceController extends Controller
                 ];
 
                 return response()->json([
+                    'code'    => 200,
                     'status'  => true,
                     'message' => 'Invoice fetched successfully.',
                     'data'    => $data,
@@ -393,6 +397,7 @@ class InvoiceController extends Controller
             ]);
 
             return response()->json([
+                'code'    => 500,
                 'status'  => false,
                 'message' => 'Something went wrong while fetching invoices.',
             ], 500);
@@ -407,6 +412,7 @@ class InvoiceController extends Controller
             $inv = InvoiceModel::find($id);
             if (! $inv) {
                 return response()->json([
+                    'code'    => 404,
                     'status'  => false,
                     'message' => 'Invoice not found.',
                 ], 404);
