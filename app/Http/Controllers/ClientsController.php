@@ -46,6 +46,7 @@ class ClientsController extends Controller
 
             // 🔹 3. Success response
             return response()->json([
+                'code'    => 201,
                 'status'  => true,
                 'message' => 'Client created successfully!',
                 'data'    => [
@@ -63,6 +64,7 @@ class ClientsController extends Controller
 
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json([
+                'code'    => 422,
                 'status'  => false,
                 'message' => 'Validation failed!',
                 'errors'  => $e->errors(),
@@ -76,6 +78,7 @@ class ClientsController extends Controller
             ]);
 
             return response()->json([
+                'code'    => 500,
                 'status'  => false,
                 'message' => 'Something went wrong while creating client!',
             ], 500);
@@ -275,6 +278,7 @@ class ClientsController extends Controller
             ]);
 
             return response()->json([
+                'code'    => 500,
                 'status'  => false,
                 'message' => 'Something went wrong while fetching clients.',
             ], 500);
@@ -290,6 +294,7 @@ class ClientsController extends Controller
 
             if (! $client) {
                 return response()->json([
+                    'code'    => 404,
                     'status'  => false,
                     'message' => 'Client not found!',
                 ], 404);
@@ -366,6 +371,7 @@ class ClientsController extends Controller
             ];
 
             return response()->json([
+                'code'    => 200,
                 'status'  => true,
                 'message' => 'Client updated successfully!',
                 'data'    => $data,
@@ -373,6 +379,7 @@ class ClientsController extends Controller
 
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json([
+                'code'    => 422,
                 'status'  => false,
                 'message' => 'Validation error!',
                 'errors'  => $e->errors(),
@@ -387,6 +394,7 @@ class ClientsController extends Controller
             ]);
 
             return response()->json([
+                'code'    => 500,
                 'status'  => false,
                 'message' => 'Something went wrong while updating client.',
             ], 500);

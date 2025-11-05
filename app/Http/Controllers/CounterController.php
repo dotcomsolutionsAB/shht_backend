@@ -81,6 +81,7 @@ class CounterController extends Controller
                 ->get();
 
             return response()->json([
+                'code'    => 200,
                 'status'  => true,
                 'message' => 'Counters fetched successfully.',
                 'count'   => $items->count(),
@@ -90,7 +91,7 @@ class CounterController extends Controller
         } catch (\Throwable $e) {
             Log::error('Counter fetch failed', ['err'=>$e->getMessage()]);
             return response()->json([
-                'status' => false, 'message' => 'Something went wrong while fetching counters.',
+                'code' => 200, 'status' => false, 'message' => 'Something went wrong while fetching counters.',
             ], 500);
         }
     }

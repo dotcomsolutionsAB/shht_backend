@@ -81,6 +81,7 @@ class TagsController extends Controller
             $count = $tags->count();
 
             return response()->json([
+                'code'    => 201,
                 'status'  => true,
                 'message' => 'Tags fetched successfully.',
                 'total'   => $total,  // before filters
@@ -91,7 +92,7 @@ class TagsController extends Controller
         } catch (\Throwable $e) {
             Log::error('Tag fetch failed', ['err' => $e->getMessage()]);
             return response()->json([
-                'status' => false, 'message' => 'Something went wrong while fetching tags.',
+                'code' => 500, 'status' => false, 'message' => 'Something went wrong while fetching tags.',
             ], 500);
         }
     }
@@ -121,12 +122,12 @@ class TagsController extends Controller
 
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json([
-                'code' => 422,'status' => false, 'message' => 'Validation error!', 'errors' => $e->errors(),
+                'code' => 422, 'status' => false, 'message' => 'Validation error!', 'errors' => $e->errors(),
             ], 422);
         } catch (\Throwable $e) {
             Log::error('Tag update failed', ['id' => $id, 'err' => $e->getMessage()]);
             return response()->json([
-                'code' => 500,'status' => false, 'message' => 'Something went wrong while updating tag.',
+                'code' => 500, 'status' => false, 'message' => 'Something went wrong while updating tag.',
             ], 500);
         }
     }
