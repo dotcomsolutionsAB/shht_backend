@@ -639,6 +639,7 @@ class OrdersController extends Controller
             $allowed = $this->getAllowedNextStatuses($order->status);
             if (!in_array($validated['status'], $allowed, true)) {
                 return response()->json([
+                    'code'    => 422,
                     'status'  => false,
                     'message' => "Invalid transition from {$order->status} to {$validated['status']}.",
                 ], 422);
@@ -697,13 +698,14 @@ class OrdersController extends Controller
             DB::commit();
 
             return response()->json([
+                'code'    => 200,
                 'status'  => true,
                 'message' => 'Order status updated successfully.',
                 'data'    => [
                     'order_id' => $order->id,
                     'status'   => $order->status,
                 ],
-            ]);
+            ], 200);
         } catch (\Throwable $e) {
             DB::rollBack();
             \Log::error('changeStatus failed', [
@@ -713,6 +715,7 @@ class OrdersController extends Controller
             ]);
 
             return response()->json([
+                'code'    => 500,
                 'status'  => false,
                 'message' => $e->getMessage() ?: 'Status update failed.',
             ], 500);
