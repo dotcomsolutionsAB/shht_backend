@@ -564,6 +564,7 @@ class OrdersController extends Controller
 
             if (!$order) {
                 return response()->json([
+                    'code'    => 404,
                     'status'  => false,
                     'message' => 'Order not found.',
                 ], 404);
@@ -593,6 +594,7 @@ class OrdersController extends Controller
             $allowed = $transitions[$order->status] ?? [];
 
             return response()->json([
+                'code'   => 200,
                 'status' => true,
                 'data'   => [
                     'current_status' => $order->status,
@@ -608,6 +610,7 @@ class OrdersController extends Controller
             ]);
 
             return response()->json([
+                'code'    => 500,
                 'status'  => false,
                 'message' => 'Something went wrong while retrieving allowed statuses.',
             ], 500);
