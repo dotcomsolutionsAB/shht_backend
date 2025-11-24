@@ -28,6 +28,8 @@ class User extends Authenticatable
         'role',
         'order_views',
         'change_status',
+        'email_status',
+        'whatsapp_status',
     ];
 
     /**

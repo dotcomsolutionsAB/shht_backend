@@ -32,6 +32,9 @@ class UserController extends Controller
             'mobile'        => ['required', 'string', 'max:15'],
             'order_views'   => ['required', Rule::in(['self', 'global'])],
             'change_status' => ['required', Rule::in(['0', '1'])],
+            'whatsapp_status' => ['nullable', Rule::in(['yes','no'])],
+            'email_status'    => ['nullable', Rule::in(['yes','no'])],
+
         ]);
 
         // 2) Create user inside a transaction
@@ -48,6 +51,8 @@ class UserController extends Controller
                 $u->mobile        = $validated['mobile'];
                 $u->order_views   = $validated['order_views']   ?? 'self';
                 $u->change_status = $validated['change_status'] ?? '0';
+                $u->email_status    = !empty($validated['email']) ? 'yes' : 'no';
+                $u->whatsapp_status = $validated['whatsapp_status'] ?? null;
 
                 $u->save();
 
@@ -68,6 +73,8 @@ class UserController extends Controller
                     'mobile'        => $user->mobile,
                     'order_views'   => $user->order_views,
                     'change_status' => $user->change_status,
+                    'email_status'    => $user->email_status,
+                    'whatsapp_status' => $user->whatsapp_status,
                     'created_at'    => $user->created_at,
                 ],
             ], 201);
@@ -96,7 +103,7 @@ class UserController extends Controller
         try {
             if ($id) {
                 // --- Fetch single user by ID ---
-                $user = User::select('id', 'name', 'email', 'username', 'order_views', 'change_status')
+                $user = User::select('id', 'name', 'email', 'username', 'order_views', 'change_status', 'email_status', 'whatsapp_status')
                     ->find($id);
 
                 if (!$user) {
@@ -120,11 +127,16 @@ class UserController extends Controller
             $offset = (int) $request->input('offset', 0);
             $search = trim((string) $request->input('search', ''));
 
+            // NEW Filter Inputs
+            $filterEmailStatus    = $request->input('email_status');    // yes/no
+            $filterWhatsappStatus = $request->input('whatsapp_status'); // yes/no
+            $filterRole = $request->input('role'); // admin, sales, staff, dispatch
+
             // Total before filtering
             $total = User::count();
 
             // Query for filtered data
-            $q = User::select('id','name','email','username','mobile','order_views','change_status')
+            $q = User::select('id','name','email','username','mobile','order_views','change_status','email_status','whatsapp_status')
                 ->orderBy('id','desc');
 
             if ($search !== '') {
@@ -133,6 +145,19 @@ class UserController extends Controller
                     ->orWhere('username', 'like', "%{$search}%")
                     ->orWhere('mobile', 'like', "%{$search}%");
                 });
+            }
+
+            // NEW Filters
+            if (!empty($filterEmailStatus) && in_array($filterEmailStatus, ['yes', 'no'])) {
+                $q->where('email_status', $filterEmailStatus);
+            }
+
+            if (!empty($filterWhatsappStatus) && in_array($filterWhatsappStatus, ['yes', 'no'])) {
+                $q->where('whatsapp_status', $filterWhatsappStatus);
+            }
+
+            if (!empty($filterRole) && in_array($filterRole, ['admin', 'sales', 'staff', 'dispatch'])) {
+                $q->where('role', $filterRole);
             }
 
             $users = $q->skip($offset)->take($limit)->get();
