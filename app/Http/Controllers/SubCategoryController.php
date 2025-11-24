@@ -88,7 +88,7 @@ class SubCategoryController extends Controller
             // NEW: Sorting
             $sortRaw = $request->input('sort_by'); // ascending / descending / asc / desc
             $sortBy  = strtolower(trim((string)$sortRaw));
-            $direction = in_array($sortBy, ['asc','ascending']) ? 'asc' : 'desc'; // default desc
+            $direction = in_array($sortBy, ['desc','descending']) ? 'desc' : 'asc'; // default desc
 
             // Total BEFORE any filters
             $total = SubCategoryModel::count();

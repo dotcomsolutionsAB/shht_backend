@@ -67,11 +67,14 @@ class TagsController extends Controller
             $limit  = (int) $request->input('limit', 10);
             $offset = (int) $request->input('offset', 0);
             $search = trim((string) $request->input('search', '')); // optional
-
+            // NEW: Sorting
+            $sortRaw = $request->input('sort_by'); // ascending / descending / asc / desc
+            $sortBy  = strtolower(trim((string)$sortRaw));
+            $direction = in_array($sortBy, ['desc','descending']) ? 'desc' : 'asc'; // default desc
             // total BEFORE filters
             $total = TagsModel::count();
 
-            $q = TagsModel::select('id','name')->orderBy('id','desc');
+            $q = TagsModel::select('id','name')->orderBy('id',$direction);
 
             if ($search !== '') {
                 $q->where('name', 'like', "%{$search}%");
