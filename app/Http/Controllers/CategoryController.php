@@ -87,11 +87,21 @@ class CategoryController extends Controller
             $offset = (int) $request->input('offset', 0);
             $search = trim((string) $request->input('search', ''));
 
+            // NEW: sort_by param (Ascending / Descending / asc / desc)
+            $sortByRaw = $request->input('sort_by');               // e.g. "Ascending", "Descending"
+            $sortBy    = strtolower(trim((string) $sortByRaw));    // "ascending", "descending", "asc", "desc"
+
+            // Default direction = ascending
+            $direction = 'asc';
+            if (in_array($sortBy, ['descending', 'desc'], true)) {
+                $direction = 'desc';
+            }
+
             // Total before filter
             $total = CategoryModel::count();
 
             // Build query
-            $query = CategoryModel::select('id', 'name')->orderBy('id', 'desc');
+            $query = CategoryModel::select('id', 'name')->orderBy('id', $direction);
 
             if ($search !== '') {
                 $query->where('name', 'like', "%{$search}%");
