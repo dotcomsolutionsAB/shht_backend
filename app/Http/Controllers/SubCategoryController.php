@@ -85,13 +85,17 @@ class SubCategoryController extends Controller
             // ---------- inside fetch() ----------
             $categoryRaw = $request->input('category');   // "1,5,9"  (string)
             $search   = trim((string) $request->input('search','')); // optional: name search
+            // NEW: Sorting
+            $sortRaw = $request->input('sort_by'); // ascending / descending / asc / desc
+            $sortBy  = strtolower(trim((string)$sortRaw));
+            $direction = in_array($sortBy, ['asc','ascending']) ? 'asc' : 'desc'; // default desc
 
             // Total BEFORE any filters
             $total = SubCategoryModel::count();
 
             $query = SubCategoryModel::with(['categoryRef:id,name'])
                 ->select('id','category','name') // use 'category_id' if that's your column
-                ->orderBy('id','desc');
+                ->orderBy('id',$direction);
                 
             // turn the comma string into an array of integers
             $categoryIds = $categoryRaw
