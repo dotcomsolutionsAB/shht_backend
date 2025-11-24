@@ -103,7 +103,7 @@ class UserController extends Controller
         try {
             if ($id) {
                 // --- Fetch single user by ID ---
-                $user = User::select('id', 'name', 'email', 'username', 'order_views', 'change_status', 'email_status', 'whatsapp_status')
+                $user = User::select('id', 'name', 'email', 'username', 'role', 'order_views', 'change_status', 'email_status', 'whatsapp_status')
                     ->find($id);
 
                 if (!$user) {
@@ -136,7 +136,7 @@ class UserController extends Controller
             $total = User::count();
 
             // Query for filtered data
-            $q = User::select('id','name','email','username','mobile','order_views','change_status','email_status','whatsapp_status')
+            $q = User::select('id','name','email','username','role','mobile','order_views','change_status','email_status','whatsapp_status')
                 ->orderBy('id','desc');
 
             if ($search !== '') {
