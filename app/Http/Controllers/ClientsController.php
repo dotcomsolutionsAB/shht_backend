@@ -259,6 +259,7 @@ class ClientsController extends Controller
                     'sales_person'    => $c->salesRef
                         ? ['id' => $c->salesRef->id, 'name' => $c->salesRef->name, 'username' => $c->salesRef->username]
                         : null,
+                    'record_created_at' => $c->created_at,
                 ];
             });
 
