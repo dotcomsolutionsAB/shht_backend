@@ -473,23 +473,24 @@ class UserController extends Controller
     public function updatePassword(Request $request)
     {
         try {
+            // 1. Validate request
             $validated = $request->validate([
-                'user_id'               => ['required', 'integer', Rule::exists('users', 'id')],
-                'password'              => ['required', 'string', 'min:8', 'confirmed'], // needs password_confirmation
+                'user_id'  => ['required', 'integer'],
+                'password' => ['required', 'string', 'min:8', 'confirmed'], // password_confirmation is required automatically
             ]);
 
-            // Optional auth guard: allow self or admin
-            // $actor = $request->user();
-            // if (!$actor || ($actor->id !== (int)$validated['user_id'] && $actor->role !== 'admin')) {
-            //     return response()->json([
-            //         'code'    => 403,
-            //         'success' => false,
-            //         'message' => 'Not authorized to update this password.',
-            //         'data'    => [],
-            //     ], 403);
-            // }
+            // 2. Check if user exists (no deleted_at used)
+            $user = User::where('id', $validated['user_id'])->first();
 
-            $user = User::find($validated['user_id']);
+            if (!$user) {
+                return response()->json([
+                    'code'    => 404,
+                    'success' => false,
+                    'message' => 'User not found — invalid user_id.',
+                ], 404);
+            }
+
+            // 3. Update password
             $user->password = Hash::make($validated['password']);
             $user->save();
 
