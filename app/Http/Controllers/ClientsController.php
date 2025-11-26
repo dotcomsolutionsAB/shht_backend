@@ -15,50 +15,167 @@ use Illuminate\Http\Request;
 class ClientsController extends Controller
 {
     // create
+    // public function create(Request $request)
+    // {
+    //     try {
+    //         // 🔹 1. Validation rules
+    //         $request->validate([
+    //             'name'          => ['required', 'string', 'max:255'],
+    //             'category'      => ['required', 'integer', 'exists:t_category,id'],
+    //             'sub_category'  => ['required', 'integer', 'exists:t_sub_category,id'],
+    //             'tags'          => ['required', 'string', 'max:255'],
+    //             'city'          => ['required', 'string', 'max:255'],
+    //             'state'         => ['required', 'string', 'max:255'],
+    //             'rm'            => ['required', 'integer', 'exists:users,id'], // RM must exist in users
+    //             'sales_person'  => ['required', 'integer', 'exists:users,id'], // Sales Person must exist in users
+    //         ]);
+
+    //         // 🔹 2. Insert record in a transaction
+    //         $client = DB::transaction(function () use ($request) {
+    //             return ClientsModel::create([
+    //                 'name'          => $request->input('name'),
+    //                 'category'      => (int) $request->input('category'),
+    //                 'sub_category'  => (int) $request->input('sub_category'),
+    //                 'tags'          => $request->input('tags'),
+    //                 'city'          => $request->input('city'),
+    //                 'state'         => $request->input('state'),
+    //                 'rm'            => (int) $request->input('rm'),
+    //                 'sales_person'  => (int) $request->input('sales_person'),
+    //             ]);
+    //         });
+
+    //         // 🔹 3. Success response
+    //         return response()->json([
+    //             'code'    => 201,
+    //             'status'  => true,
+    //             'message' => 'Client created successfully!',
+    //             'data'    => [
+    //                 'id'            => $client->id,
+    //                 'name'          => $client->name,
+    //                 'category'      => $client->category,
+    //                 'sub_category'  => $client->sub_category,
+    //                 'tags'          => $client->tags,
+    //                 'city'          => $client->city,
+    //                 'state'         => $client->state,
+    //                 'rm'            => $client->rm,
+    //                 'sales_person'  => $client->sales_person,
+    //             ],
+    //         ], 201);
+
+    //     } catch (\Illuminate\Validation\ValidationException $e) {
+    //         return response()->json([
+    //             'code'    => 422,
+    //             'status'  => false,
+    //             'message' => 'Validation failed!',
+    //             'errors'  => $e->errors(),
+    //         ], 422);
+
+    //     } catch (\Throwable $e) {
+    //         Log::error('Client create failed', [
+    //             'error' => $e->getMessage(),
+    //             'file'  => $e->getFile(),
+    //             'line'  => $e->getLine(),
+    //         ]);
+
+    //         return response()->json([
+    //             'code'    => 500,
+    //             'status'  => false,
+    //             'message' => 'Something went wrong while creating client!',
+    //         ], 500);
+    //     }
+    // }
+
     public function create(Request $request)
     {
         try {
-            // 🔹 1. Validation rules
+            // 1️⃣ Validate main client + nested contact_person array
             $request->validate([
-                'name'          => ['required', 'string', 'max:255'],
-                'category'      => ['required', 'integer', 'exists:t_category,id'],
-                'sub_category'  => ['required', 'integer', 'exists:t_sub_category,id'],
-                'tags'          => ['required', 'string', 'max:255'],
-                'city'          => ['required', 'string', 'max:255'],
-                'state'         => ['required', 'string', 'max:255'],
-                'rm'            => ['required', 'integer', 'exists:users,id'], // RM must exist in users
-                'sales_person'  => ['required', 'integer', 'exists:users,id'], // Sales Person must exist in users
+                'name'          => ['required','string','max:255'],
+                'category'      => ['required','integer','exists:t_category,id'],
+                'sub_category'  => ['required','integer','exists:t_sub_category,id'],
+                'tags'          => ['nullable','string','max:255'], // e.g. "1,2,3"
+                'city'          => ['required','string','max:255'],
+                'state'         => ['required','string','max:255'],
+                'sales_person'  => ['required','integer'],
+                'rm'            => ['required','integer'],
+
+                // contact_person must be an array with at least 1 entry
+                'contact_person'                  => ['required','array','min:1'],
+                'contact_person.*.name'           => ['required','string','max:255'],
+                'contact_person.*.designation'    => ['nullable','string','max:255'],
+                'contact_person.*.mobile'         => ['nullable','string','max:20'],
+                'contact_person.*.email'          => ['nullable','email','max:255'],
             ]);
 
-            // 🔹 2. Insert record in a transaction
-            $client = DB::transaction(function () use ($request) {
-                return ClientsModel::create([
-                    'name'          => $request->input('name'),
-                    'category'      => (int) $request->input('category'),
-                    'sub_category'  => (int) $request->input('sub_category'),
-                    'tags'          => $request->input('tags'),
-                    'city'          => $request->input('city'),
-                    'state'         => $request->input('state'),
-                    'rm'            => (int) $request->input('rm'),
-                    'sales_person'  => (int) $request->input('sales_person'),
+            // 2️⃣ Extra validation: for each contact person, at least one of designation/mobile/email
+            foreach ($request->input('contact_person', []) as $index => $cp) {
+                $hasDesignation = !empty($cp['designation'] ?? null);
+                $hasMobile      = !empty($cp['mobile'] ?? null);
+                $hasEmail       = !empty($cp['email'] ?? null);
+
+                if (!$hasDesignation && !$hasMobile && !$hasEmail) {
+                    return response()->json([
+                        'code'    => 422,
+                        'status'  => false,
+                        'message' => "For contact_person index {$index}, at least one of designation, mobile or email is required.",
+                    ], 422);
+                }
+            }
+
+            // 3️⃣ Create client + contact persons in one transaction
+            $clientData = $request->only([
+                'name',
+                'category',
+                'sub_category',
+                'tags',
+                'city',
+                'state',
+                'sales_person',
+                'rm',
+            ]);
+
+            $contactPersons = $request->input('contact_person', []);
+
+            $result = DB::transaction(function () use ($clientData, $contactPersons) {
+
+                // 3.1 Create the client record
+                $client = ClientsModel::create([
+                    'name'         => $clientData['name'],
+                    'category'     => (int)$clientData['category'],
+                    'sub_category' => (int)$clientData['sub_category'],
+                    'tags'         => $clientData['tags'] ?? null,
+                    'city'         => $clientData['city'],
+                    'state'        => $clientData['state'],
+                    'sales_person' => (int)$clientData['sales_person'],
+                    'rm'           => (int)$clientData['rm'],
                 ]);
+
+                // 3.2 Insert all contact persons linked to this client
+                $createdContacts = [];
+                foreach ($contactPersons as $cp) {
+                    $createdContacts[] = ClientsContactPersonModel::create([
+                        'client'      => $client->id,                // FK
+                        'name'        => $cp['name'],
+                        'designation' => $cp['designation'] ?? null,
+                        'mobile'      => $cp['mobile'] ?? null,
+                        'email'       => $cp['email'] ?? null,
+                    ]);
+                }
+
+                return [
+                    'client'   => $client,
+                    'contacts' => $createdContacts,
+                ];
             });
 
-            // 🔹 3. Success response
+            // 4️⃣ Clean success response
             return response()->json([
                 'code'    => 201,
                 'status'  => true,
-                'message' => 'Client created successfully!',
+                'message' => 'Client and contact persons created successfully!',
                 'data'    => [
-                    'id'            => $client->id,
-                    'name'          => $client->name,
-                    'category'      => $client->category,
-                    'sub_category'  => $client->sub_category,
-                    'tags'          => $client->tags,
-                    'city'          => $client->city,
-                    'state'         => $client->state,
-                    'rm'            => $client->rm,
-                    'sales_person'  => $client->sales_person,
+                    'client'   => $result['client'],
+                    'contacts' => $result['contacts'],
                 ],
             ], 201);
 
@@ -66,12 +183,12 @@ class ClientsController extends Controller
             return response()->json([
                 'code'    => 422,
                 'status'  => false,
-                'message' => 'Validation failed!',
+                'message' => 'Validation error!',
                 'errors'  => $e->errors(),
             ], 422);
 
         } catch (\Throwable $e) {
-            Log::error('Client create failed', [
+            \Log::error('Client + Contact create failed', [
                 'error' => $e->getMessage(),
                 'file'  => $e->getFile(),
                 'line'  => $e->getLine(),

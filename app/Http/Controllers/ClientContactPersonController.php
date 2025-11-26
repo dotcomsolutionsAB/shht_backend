@@ -9,54 +9,200 @@ use Illuminate\Http\Request;
 class ClientContactPersonController extends Controller
 {
     //
+    // public function create(Request $request)
+    // {
+    //     try {
+    //         // 1️⃣ Validate request
+    //         $request->validate([
+    //             'client'      => ['required','integer','exists:t_clients,id'],
+    //             'name'        => ['required','string','max:255'],
+    //             'designation' => ['nullable','string','max:255'],
+    //             'mobile'      => ['nullable','string','max:20'],
+    //             'email'       => ['nullable','email','max:255'],
+    //         ]);
+
+    //         // Step 2️⃣: Ensure at least one of designation/mobile/email is provided
+    //         if (
+    //             empty($request->input('designation')) &&
+    //             empty($request->input('mobile')) &&
+    //             empty($request->input('email'))
+    //         ) {
+    //             return response()->json([
+    //                 'code'    => 422,
+    //                 'status'  => false,
+    //                 'message' => 'At least one of designation, mobile, or email must be provided.',
+    //             ], 422);
+    //         }
+
+    //         // Step 3️⃣: Create inside transaction
+    //         $contact = DB::transaction(function () use ($request) {
+    //             return ClientsContactPersonModel::create([
+    //                 'client'      => (int) $request->input('client'),
+    //                 'name'        => $request->input('name'),
+    //                 'designation' => $request->input('designation'),
+    //                 'mobile'      => $request->input('mobile'),
+    //                 'email'       => $request->input('email'),
+    //             ]);
+    //         });
+
+    //         // Step 4️⃣: Clean success response
+    //         return response()->json([
+    //             'code'    => 201,
+    //             'status'  => true,
+    //             'message' => 'Client contact person created successfully!',
+    //             'data'    => [
+    //                 'id'          => $contact->id,
+    //                 'client'      => $contact->client,
+    //                 'name'        => $contact->name,
+    //                 'designation' => $contact->designation,
+    //                 'mobile'      => $contact->mobile,
+    //                 'email'       => $contact->email,
+    //             ],
+    //         ], 201);
+
+    //     } catch (\Illuminate\Validation\ValidationException $e) {
+    //         return response()->json([
+    //             'code'    => 422,
+    //             'status'  => false,
+    //             'message' => 'Validation error!',
+    //             'errors'  => $e->errors(),
+    //         ], 422);
+
+    //     } catch (\Throwable $e) {
+    //         Log::error('Contact Person create failed', [
+    //             'error' => $e->getMessage(),
+    //             'file'  => $e->getFile(),
+    //             'line'  => $e->getLine(),
+    //         ]);
+
+    //         return response()->json([
+    //             'code'    => 500,
+    //             'status'  => false,
+    //             'message' => 'Something went wrong while creating contact person!',
+    //         ], 500);
+    //     }
+    // }
+
     public function create(Request $request)
     {
         try {
-            // 1️⃣ Validate request
-            $request->validate([
-                'client'      => ['required','integer','exists:t_clients,id'],
-                'name'        => ['required','string','max:255'],
-                'designation' => ['nullable','string','max:255'],
-                'mobile'      => ['nullable','string','max:20'],
-                'email'       => ['nullable','email','max:255'],
+            // 1️⃣ Validate basic structure
+            $validated = $request->validate([
+                'client'                 => ['required', 'integer', 'exists:t_clients,id'],
+                'contacts'               => ['required', 'array', 'min:1'],
+
+                'contacts.*.id'          => ['nullable', 'integer', 'min:1'],
+                'contacts.*.name'        => ['required', 'string', 'max:255'],
+                'contacts.*.designation' => ['nullable', 'string', 'max:255'],
+                'contacts.*.mobile'      => ['nullable', 'string', 'max:20'],
+                'contacts.*.email'       => ['nullable', 'email', 'max:255'],
             ]);
 
-            // Step 2️⃣: Ensure at least one of designation/mobile/email is provided
-            if (
-                empty($request->input('designation')) &&
-                empty($request->input('mobile')) &&
-                empty($request->input('email'))
-            ) {
-                return response()->json([
-                    'code'    => 422,
-                    'status'  => false,
-                    'message' => 'At least one of designation, mobile, or email must be provided.',
-                ], 422);
+            $clientId = (int) $validated['client'];
+            $contacts = $validated['contacts'];
+
+            // 2️⃣ Extra rule: for EACH contact, at least one of designation/mobile/email is required
+            foreach ($contacts as $idx => $c) {
+                $hasDesignation = !empty($c['designation'] ?? null);
+                $hasMobile      = !empty($c['mobile'] ?? null);
+                $hasEmail       = !empty($c['email'] ?? null);
+
+                if (!$hasDesignation && !$hasMobile && !$hasEmail) {
+                    return response()->json([
+                        'code'   => 422,
+                        'status' => false,
+                        'message'=> "At least one of designation, mobile, or email is required for contact index {$idx}.",
+                    ], 422);
+                }
             }
 
-            // Step 3️⃣: Create inside transaction
-            $contact = DB::transaction(function () use ($request) {
-                return ClientsContactPersonModel::create([
-                    'client'      => (int) $request->input('client'),
-                    'name'        => $request->input('name'),
-                    'designation' => $request->input('designation'),
-                    'mobile'      => $request->input('mobile'),
-                    'email'       => $request->input('email'),
-                ]);
+            // 3️⃣ Validate that all passed IDs (if any) actually belong to this client
+            $idsProvided = collect($contacts)
+                ->pluck('id')
+                ->filter()        // remove null
+                ->unique()
+                ->values();
+
+            if ($idsProvided->isNotEmpty()) {
+                $validIds = ClientsContactPersonModel::where('client', $clientId)
+                    ->whereIn('id', $idsProvided)
+                    ->pluck('id');
+
+                $invalid = $idsProvided->diff($validIds);
+
+                if ($invalid->isNotEmpty()) {
+                    return response()->json([
+                        'code'   => 422,
+                        'status' => false,
+                        'message'=> 'One or more contact IDs do not belong to this client.',
+                        'errors' => [
+                            'invalid_contact_ids' => $invalid->values(),
+                        ],
+                    ], 422);
+                }
+            }
+
+            // 4️⃣ Transaction: upsert + delete missing
+            $finalContacts = DB::transaction(function () use ($clientId, $contacts) {
+                // existing contacts for this client
+                $existingIds = ClientsContactPersonModel::where('client', $clientId)
+                    ->pluck('id')
+                    ->toArray();
+
+                $keepIds = [];
+
+                foreach ($contacts as $c) {
+                    $id          = $c['id'] ?? null;
+                    $name        = $c['name'];
+                    $designation = $c['designation'] ?? null;
+                    $mobile      = $c['mobile'] ?? null;
+                    $email       = $c['email'] ?? null;
+
+                    if (!empty($id)) {
+                        // UPDATE existing (we already validated that id belongs to client)
+                        $contact = ClientsContactPersonModel::where('client', $clientId)->find($id);
+                        $contact->update([
+                            'name'        => $name,
+                            'designation' => $designation,
+                            'mobile'      => $mobile,
+                            'email'       => $email,
+                        ]);
+                    } else {
+                        // CREATE new
+                        $contact = ClientsContactPersonModel::create([
+                            'client'      => $clientId,
+                            'name'        => $name,
+                            'designation' => $designation,
+                            'mobile'      => $mobile,
+                            'email'       => $email,
+                        ]);
+                    }
+
+                    $keepIds[] = $contact->id;
+                }
+
+                // Delete any old contacts that are not present in the new list
+                $idsToDelete = array_diff($existingIds, $keepIds);
+                if (!empty($idsToDelete)) {
+                    ClientsContactPersonModel::where('client', $clientId)
+                        ->whereIn('id', $idsToDelete)
+                        ->delete();
+                }
+
+                // Return fresh list for this client
+                return ClientsContactPersonModel::where('client', $clientId)
+                    ->orderBy('id')
+                    ->get();
             });
 
-            // Step 4️⃣: Clean success response
+            // 5️⃣ Success response
             return response()->json([
                 'code'    => 201,
                 'status'  => true,
-                'message' => 'Client contact person created successfully!',
+                'message' => 'Client contact persons synced successfully!',
                 'data'    => [
-                    'id'          => $contact->id,
-                    'client'      => $contact->client,
-                    'name'        => $contact->name,
-                    'designation' => $contact->designation,
-                    'mobile'      => $contact->mobile,
-                    'email'       => $contact->email,
+                    'client'   => $clientId,
+                    'contacts' => $finalContacts,
                 ],
             ], 201);
 
@@ -69,7 +215,7 @@ class ClientContactPersonController extends Controller
             ], 422);
 
         } catch (\Throwable $e) {
-            Log::error('Contact Person create failed', [
+            Log::error('Contact Person bulk sync failed', [
                 'error' => $e->getMessage(),
                 'file'  => $e->getFile(),
                 'line'  => $e->getLine(),
@@ -78,12 +224,97 @@ class ClientContactPersonController extends Controller
             return response()->json([
                 'code'    => 500,
                 'status'  => false,
-                'message' => 'Something went wrong while creating contact person!',
+                'message' => 'Something went wrong while syncing contact persons!',
             ], 500);
         }
     }
 
     // fetch
+    // public function fetch(Request $request, $id = null)
+    // {
+    //     try {
+    //         // ---------- Fetch single by ID ----------
+    //         if ($id !== null) {
+    //             $cp = ClientsContactPersonModel::with(['clientRef:id,name'])
+    //                 ->select('id', 'client', 'name', 'designation', 'mobile', 'email')
+    //                 ->find($id);
+
+    //             if (! $cp) {
+    //                 return response()->json([
+    //                     'status'  => false,
+    //                     'message' => 'Contact person not found.',
+    //                 ], 404);
+    //             }
+
+    //             $data = [
+    //                 'id'          => $cp->id,
+    //                 'name'        => $cp->name,
+    //                 'designation' => $cp->designation,
+    //                 'mobile'      => $cp->mobile,
+    //                 'email'       => $cp->email,
+    //                 'client'      => $cp->clientRef
+    //                     ? ['id' => $cp->clientRef->id, 'name' => $cp->clientRef->name]
+    //                     : null,
+    //             ];
+
+    //             return response()->json([
+    //                 'code'    => 200,
+    //                 'status'  => true,
+    //                 'message' => 'Contact person fetched successfully.',
+    //                 'data'    => $data,
+    //             ], 200);
+    //         }
+
+    //         // ---------- List with limit/offset (and optional ?client=ID filter) ----------
+    //         $limit  = (int) $request->input('limit', 10);
+    //         $offset = (int) $request->input('offset', 0);
+    //         $clientFilter = $request->input('client'); // optional filter
+
+    //         $query = ClientsContactPersonModel::with(['clientRef:id,name'])
+    //             ->select('id', 'client', 'name', 'designation', 'mobile', 'email')
+    //             ->orderBy('id', 'desc');
+
+    //         if ($clientFilter !== null) {
+    //             $query->where('client', (int) $clientFilter);
+    //         }
+
+    //         $items = $query->skip($offset)->take($limit)->get();
+
+    //         $data = $items->map(function ($cp) {
+    //             return [
+    //                 'id'          => $cp->id,
+    //                 'name'        => $cp->name,
+    //                 'designation' => $cp->designation,
+    //                 'mobile'      => $cp->mobile,
+    //                 'email'       => $cp->email,
+    //                 'client'      => $cp->clientRef
+    //                     ? ['id' => $cp->clientRef->id, 'name' => $cp->clientRef->name]
+    //                     : null,
+    //             ];
+    //         });
+
+    //         return response()->json([
+    //             'code'    => 200,
+    //             'status'  => true,
+    //             'message' => 'Contact persons fetched successfully.',
+    //             'count'   => $data->count(),
+    //             'data'    => $data,
+    //         ], 200);
+
+    //     } catch (\Throwable $e) {
+    //         Log::error('Contact person fetch failed', [
+    //             'error' => $e->getMessage(),
+    //             'file'  => $e->getFile(),
+    //             'line'  => $e->getLine(),
+    //         ]);
+
+    //         return response()->json([
+    //             'code'    => 500,
+    //             'status'  => false,
+    //             'message' => 'Something went wrong while fetching contact persons.',
+    //         ], 500);
+    //     }
+    // }
     public function fetch(Request $request, $id = null)
     {
         try {
@@ -95,6 +326,7 @@ class ClientContactPersonController extends Controller
 
                 if (! $cp) {
                     return response()->json([
+                        'code'    => 404,
                         'status'  => false,
                         'message' => 'Contact person not found.',
                     ], 404);
@@ -119,18 +351,21 @@ class ClientContactPersonController extends Controller
                 ], 200);
             }
 
-            // ---------- List with limit/offset (and optional ?client=ID filter) ----------
-            $limit  = (int) $request->input('limit', 10);
-            $offset = (int) $request->input('offset', 0);
-            $clientFilter = $request->input('client'); // optional filter
+            // ---------- LIST MODE: client is COMPULSORY ----------
+            $validated = $request->validate([
+                'client' => ['required', 'integer', 'exists:t_clients,id'],
+                'limit'  => ['nullable', 'integer', 'min:1'],
+                'offset' => ['nullable', 'integer', 'min:0'],
+            ]);
+
+            $clientId = (int) $validated['client'];
+            $limit    = isset($validated['limit'])  ? (int) $validated['limit']  : 10;
+            $offset   = isset($validated['offset']) ? (int) $validated['offset'] : 0;
 
             $query = ClientsContactPersonModel::with(['clientRef:id,name'])
                 ->select('id', 'client', 'name', 'designation', 'mobile', 'email')
+                ->where('client', $clientId)          // 🔴 compulsory filter
                 ->orderBy('id', 'desc');
-
-            if ($clientFilter !== null) {
-                $query->where('client', (int) $clientFilter);
-            }
 
             $items = $query->skip($offset)->take($limit)->get();
 
