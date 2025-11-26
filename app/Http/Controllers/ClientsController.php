@@ -16,76 +16,6 @@ use Illuminate\Http\Request;
 class ClientsController extends Controller
 {
     // create
-    // public function create(Request $request)
-    // {
-    //     try {
-    //         // 🔹 1. Validation rules
-    //         $request->validate([
-    //             'name'          => ['required', 'string', 'max:255'],
-    //             'category'      => ['required', 'integer', 'exists:t_category,id'],
-    //             'sub_category'  => ['required', 'integer', 'exists:t_sub_category,id'],
-    //             'tags'          => ['required', 'string', 'max:255'],
-    //             'city'          => ['required', 'string', 'max:255'],
-    //             'state'         => ['required', 'string', 'max:255'],
-    //             'rm'            => ['required', 'integer', 'exists:users,id'], // RM must exist in users
-    //             'sales_person'  => ['required', 'integer', 'exists:users,id'], // Sales Person must exist in users
-    //         ]);
-
-    //         // 🔹 2. Insert record in a transaction
-    //         $client = DB::transaction(function () use ($request) {
-    //             return ClientsModel::create([
-    //                 'name'          => $request->input('name'),
-    //                 'category'      => (int) $request->input('category'),
-    //                 'sub_category'  => (int) $request->input('sub_category'),
-    //                 'tags'          => $request->input('tags'),
-    //                 'city'          => $request->input('city'),
-    //                 'state'         => $request->input('state'),
-    //                 'rm'            => (int) $request->input('rm'),
-    //                 'sales_person'  => (int) $request->input('sales_person'),
-    //             ]);
-    //         });
-
-    //         // 🔹 3. Success response
-    //         return response()->json([
-    //             'code'    => 201,
-    //             'status'  => true,
-    //             'message' => 'Client created successfully!',
-    //             'data'    => [
-    //                 'id'            => $client->id,
-    //                 'name'          => $client->name,
-    //                 'category'      => $client->category,
-    //                 'sub_category'  => $client->sub_category,
-    //                 'tags'          => $client->tags,
-    //                 'city'          => $client->city,
-    //                 'state'         => $client->state,
-    //                 'rm'            => $client->rm,
-    //                 'sales_person'  => $client->sales_person,
-    //             ],
-    //         ], 201);
-
-    //     } catch (\Illuminate\Validation\ValidationException $e) {
-    //         return response()->json([
-    //             'code'    => 422,
-    //             'status'  => false,
-    //             'message' => 'Validation failed!',
-    //             'errors'  => $e->errors(),
-    //         ], 422);
-
-    //     } catch (\Throwable $e) {
-    //         Log::error('Client create failed', [
-    //             'error' => $e->getMessage(),
-    //             'file'  => $e->getFile(),
-    //             'line'  => $e->getLine(),
-    //         ]);
-
-    //         return response()->json([
-    //             'code'    => 500,
-    //             'status'  => false,
-    //             'message' => 'Something went wrong while creating client!',
-    //         ], 500);
-    //     }
-    // }
-
     public function create(Request $request)
     {
         try {
@@ -215,7 +145,7 @@ class ClientsController extends Controller
                         'rmRef:id,name,username,email',
                         'salesRef:id,name,username,email'
                     ])
-                    ->select('id','name','category','sub_category','tags','city','state','rm', 'sales_person')
+                    ->select('id','name','category','sub_category','tags','city','state','rm', 'sales_person', 'created_at', 'updated_at')
                     ->find($id);
 
                 if (! $client) {
@@ -256,6 +186,8 @@ class ClientsController extends Controller
                     'sales_person'    => $client->salesRef
                         ? ['id' => $client->salesRef->id, 'name' => $client->salesRef->name, 'username' => $client->salesRef->username]
                         : null,
+                    'record_created_at' => $client->created_at,
+                    'record_updated_at' => $client->updated_at,
                 ];
 
                 return response()->json([
@@ -378,6 +310,7 @@ class ClientsController extends Controller
                         ? ['id' => $c->salesRef->id, 'name' => $c->salesRef->name, 'username' => $c->salesRef->username]
                         : null,
                     'record_created_at' => $c->created_at,
+                    'record_updated_at' => $c->updated_at,
                 ];
             });
 
