@@ -31,4 +31,9 @@ class ClientsModel extends Model
         // Sales Person stored as users.id
         return $this->belongsTo(User::class, 'rm', 'id');
     }
+
+    public function contactPersons()
+    {
+        return $this->hasMany(ClientsContactPersonModel::class, 'client', 'id');
+    }
 }

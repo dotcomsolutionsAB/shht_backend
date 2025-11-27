@@ -16,44 +16,171 @@ use Illuminate\Http\Request;
 class ClientsController extends Controller
 {
     // create
+    // public function create(Request $request)
+    // {
+    //     try {
+    //         // 1️⃣ Validate main client + nested contact_person array
+    //         $request->validate([
+    //             'name'          => ['required','string','max:255'],
+    //             'category'      => ['required','integer','exists:t_category,id'],
+    //             'sub_category'  => ['required','integer','exists:t_sub_category,id'],
+    //             'tags'          => ['nullable','string','max:255'], // e.g. "1,2,3"
+    //             'city'          => ['required','string','max:255'],
+    //             'state'         => ['required','string','max:255'],
+    //             'sales_person'  => ['required','integer'],
+    //             'rm'            => ['required','integer'],
+
+    //             // contact_person must be an array with at least 1 entry
+    //             'contact_person'                  => ['required','array','min:1'],
+    //             'contact_person.*.name'           => ['required','string','max:255'],
+    //             'contact_person.*.designation'    => ['nullable','string','max:255'],
+    //             'contact_person.*.mobile'         => ['nullable','string','max:20'],
+    //             'contact_person.*.email'          => ['nullable','email','max:255'],
+    //         ]);
+
+    //         // 2️⃣ Extra validation: for each contact person, at least one of designation/mobile/email
+    //         foreach ($request->input('contact_person', []) as $index => $cp) {
+    //             $hasDesignation = !empty($cp['designation'] ?? null);
+    //             $hasMobile      = !empty($cp['mobile'] ?? null);
+    //             $hasEmail       = !empty($cp['email'] ?? null);
+
+    //             if (!$hasDesignation && !$hasMobile && !$hasEmail) {
+    //                 return response()->json([
+    //                     'code'    => 422,
+    //                     'status'  => false,
+    //                     'message' => "For contact_person index {$index}, at least one of designation, mobile or email is required.",
+    //                 ], 422);
+    //             }
+    //         }
+
+    //         // 3️⃣ Create client + contact persons in one transaction
+    //         $clientData = $request->only([
+    //             'name',
+    //             'category',
+    //             'sub_category',
+    //             'tags',
+    //             'city',
+    //             'state',
+    //             'sales_person',
+    //             'rm',
+    //         ]);
+
+    //         $contactPersons = $request->input('contact_person', []);
+
+    //         $result = DB::transaction(function () use ($clientData, $contactPersons) {
+
+    //             // 3.1 Create the client record
+    //             $client = ClientsModel::create([
+    //                 'name'         => $clientData['name'],
+    //                 'category'     => (int)$clientData['category'],
+    //                 'sub_category' => (int)$clientData['sub_category'],
+    //                 'tags'         => $clientData['tags'] ?? null,
+    //                 'city'         => $clientData['city'],
+    //                 'state'        => $clientData['state'],
+    //                 'sales_person' => (int)$clientData['sales_person'],
+    //                 'rm'           => (int)$clientData['rm'],
+    //             ]);
+
+    //             // 3.2 Insert all contact persons linked to this client
+    //             $createdContacts = [];
+    //             foreach ($contactPersons as $cp) {
+    //                 $createdContacts[] = ClientsContactPersonModel::create([
+    //                     'client'      => $client->id,                // FK
+    //                     'name'        => $cp['name'],
+    //                     'designation' => $cp['designation'] ?? null,
+    //                     'mobile'      => $cp['mobile'] ?? null,
+    //                     'email'       => $cp['email'] ?? null,
+    //                 ]);
+    //             }
+
+    //             return [
+    //                 'client'   => $client,
+    //                 'contacts' => $createdContacts,
+    //             ];
+    //         });
+
+    //         // 4️⃣ Clean success response
+    //         return response()->json([
+    //             'code'    => 201,
+    //             'status'  => true,
+    //             'message' => 'Client and contact persons created successfully!',
+    //             'data'    => [
+    //                 'client'   => $result['client'],
+    //                 'contacts' => $result['contacts'],
+    //             ],
+    //         ], 201);
+
+    //     } catch (\Illuminate\Validation\ValidationException $e) {
+    //         return response()->json([
+    //             'code'    => 422,
+    //             'status'  => false,
+    //             'message' => 'Validation error!',
+    //             'errors'  => $e->errors(),
+    //         ], 422);
+
+    //     } catch (\Throwable $e) {
+    //         \Log::error('Client + Contact create failed', [
+    //             'error' => $e->getMessage(),
+    //             'file'  => $e->getFile(),
+    //             'line'  => $e->getLine(),
+    //         ]);
+
+    //         return response()->json([
+    //             'code'    => 500,
+    //             'status'  => false,
+    //             'message' => 'Something went wrong while creating client!',
+    //         ], 500);
+    //     }
+    // }
+
     public function create(Request $request)
     {
         try {
-            // 1️⃣ Validate main client + nested contact_person array
+            // 1️⃣ Validate main client + nested contact_person
             $request->validate([
                 'name'          => ['required','string','max:255'],
                 'category'      => ['required','integer','exists:t_category,id'],
                 'sub_category'  => ['required','integer','exists:t_sub_category,id'],
-                'tags'          => ['nullable','string','max:255'], // e.g. "1,2,3"
+                'tags'          => ['nullable','string','max:255'],
                 'city'          => ['required','string','max:255'],
                 'state'         => ['required','string','max:255'],
-                'sales_person'  => ['required','integer'],
-                'rm'            => ['required','integer'],
+                'pincode'       => ['required','integer','digits:6'],
 
-                // contact_person must be an array with at least 1 entry
-                'contact_person'                  => ['required','array','min:1'],
-                'contact_person.*.name'           => ['required','string','max:255'],
-                'contact_person.*.designation'    => ['nullable','string','max:255'],
-                'contact_person.*.mobile'         => ['nullable','string','max:20'],
-                'contact_person.*.email'          => ['nullable','email','max:255'],
+                // main RM must be valid staff
+                'rm'            => ['required','integer','exists:users,id'],
+                'sales_person'  => ['required','integer','exists:users,id'],
+
+                // contact_person array
+                'contact_person'             => ['required','array','min:1'],
+                'contact_person.*.name'      => ['required','string','max:255'],
+                'contact_person.*.rm'        => ['required','integer','exists:users,id'],
+                'contact_person.*.mobile'    => ['required','string','max:20'],
+                'contact_person.*.email'     => ['nullable','email','max:255'],
             ]);
 
-            // 2️⃣ Extra validation: for each contact person, at least one of designation/mobile/email
-            foreach ($request->input('contact_person', []) as $index => $cp) {
-                $hasDesignation = !empty($cp['designation'] ?? null);
-                $hasMobile      = !empty($cp['mobile'] ?? null);
-                $hasEmail       = !empty($cp['email'] ?? null);
+            // 2️⃣ Extra validation: main RM must be staff
+            $mainRm = User::find($request->rm);
+            if (!$mainRm || $mainRm->role !== 'staff') {
+                return response()->json([
+                    'code' => 422,
+                    'status' => false,
+                    'message' => 'Main RM must be a valid staff user.',
+                ], 422);
+            }
 
-                if (!$hasDesignation && !$hasMobile && !$hasEmail) {
+            // 3️⃣ Extra validation: each contact person RM must be staff
+            foreach ($request->contact_person as $index => $cp) {
+                $rmUser = User::find($cp['rm']);
+                if (!$rmUser || $rmUser->role !== 'staff') {
                     return response()->json([
-                        'code'    => 422,
-                        'status'  => false,
-                        'message' => "For contact_person index {$index}, at least one of designation, mobile or email is required.",
+                        'code' => 422,
+                        'status' => false,
+                        'message' => "contact_person[$index].rm must be a valid staff user.",
                     ], 422);
                 }
             }
 
-            // 3️⃣ Create client + contact persons in one transaction
+            // Extract validated data
             $clientData = $request->only([
                 'name',
                 'category',
@@ -61,35 +188,38 @@ class ClientsController extends Controller
                 'tags',
                 'city',
                 'state',
+                'pincode',
                 'sales_person',
                 'rm',
             ]);
 
-            $contactPersons = $request->input('contact_person', []);
+            $contactPersons = $request->contact_person;
 
+            // 4️⃣ Create client + contacts in DB transaction
             $result = DB::transaction(function () use ($clientData, $contactPersons) {
 
-                // 3.1 Create the client record
+                // 4.1 Create client record
                 $client = ClientsModel::create([
-                    'name'         => $clientData['name'],
-                    'category'     => (int)$clientData['category'],
-                    'sub_category' => (int)$clientData['sub_category'],
-                    'tags'         => $clientData['tags'] ?? null,
-                    'city'         => $clientData['city'],
-                    'state'        => $clientData['state'],
-                    'sales_person' => (int)$clientData['sales_person'],
-                    'rm'           => (int)$clientData['rm'],
+                    'name'          => $clientData['name'],
+                    'category'      => (int)$clientData['category'],
+                    'sub_category'  => (int)$clientData['sub_category'],
+                    'tags'          => $clientData['tags'] ?? null,
+                    'city'          => $clientData['city'],
+                    'state'         => $clientData['state'],
+                    'pincode'       => $clientData['pincode'],
+                    'sales_person'  => (int)$clientData['sales_person'],
+                    'rm'            => (int)$clientData['rm'],
                 ]);
 
-                // 3.2 Insert all contact persons linked to this client
+                // 4.2 Insert contact persons
                 $createdContacts = [];
                 foreach ($contactPersons as $cp) {
                     $createdContacts[] = ClientsContactPersonModel::create([
-                        'client'      => $client->id,                // FK
-                        'name'        => $cp['name'],
-                        'designation' => $cp['designation'] ?? null,
-                        'mobile'      => $cp['mobile'] ?? null,
-                        'email'       => $cp['email'] ?? null,
+                        'client'  => $client->id,
+                        'name'    => $cp['name'],
+                        'rm'      => (int)$cp['rm'],     // Valid staff
+                        'mobile'  => $cp['mobile'],
+                        'email'   => $cp['email'] ?? null,
                     ]);
                 }
 
@@ -99,11 +229,11 @@ class ClientsController extends Controller
                 ];
             });
 
-            // 4️⃣ Clean success response
+            // 5️⃣ Success response
             return response()->json([
                 'code'    => 201,
                 'status'  => true,
-                'message' => 'Client and contact persons created successfully!',
+                'message' => 'Client & contact persons created successfully!',
                 'data'    => [
                     'client'   => $result['client'],
                     'contacts' => $result['contacts'],
@@ -119,7 +249,7 @@ class ClientsController extends Controller
             ], 422);
 
         } catch (\Throwable $e) {
-            \Log::error('Client + Contact create failed', [
+            \Log::error('Client creation failed', [
                 'error' => $e->getMessage(),
                 'file'  => $e->getFile(),
                 'line'  => $e->getLine(),
@@ -128,27 +258,235 @@ class ClientsController extends Controller
             return response()->json([
                 'code'    => 500,
                 'status'  => false,
-                'message' => 'Something went wrong while creating client!',
+                'message' => 'Something went wrong!',
             ], 500);
         }
     }
 
+
     // fetch
+    // public function fetch(Request $request, $id = null)
+    // {
+    //     try {
+    //         // ---------- Single record ----------
+    //         if ($id !== null) {
+    //             $client = ClientsModel::with([
+    //                     'categoryRef:id,name',
+    //                     'subCategoryRef:id,name',
+    //                     'rmRef:id,name,username,email',
+    //                     'salesRef:id,name,username,email'
+    //                 ])
+    //                 ->select('id','name','category','sub_category','tags','city','state','rm', 'sales_person', 'created_at', 'updated_at')
+    //                 ->find($id);
+
+    //             if (! $client) {
+    //                 return response()->json([
+    //                     'code'    => 404,
+    //                     'status'  => false,
+    //                     'message' => 'Client not found.',
+    //                 ], 404);
+    //             }
+
+    //             // Parse tag ids and fetch tag objects
+    //             $tagIds = collect(explode(',', (string) $client->tags))
+    //                 ->map(fn($v) => (int) trim($v))
+    //                 ->filter()
+    //                 ->unique()
+    //                 ->values();
+
+    //             $tags = $tagIds->isEmpty()
+    //                 ? collect()
+    //                 : TagsModel::whereIn('id', $tagIds)->select('id','name')->get();
+
+    //             // Shape response
+    //             $data = [
+    //                 'id'   => $client->id,
+    //                 'name' => $client->name,
+    //                 'category' => $client->categoryRef
+    //                     ? ['id' => $client->categoryRef->id, 'name' => $client->categoryRef->name]
+    //                     : null,
+    //                 'sub_category' => $client->subCategoryRef
+    //                     ? ['id' => $client->subCategoryRef->id, 'name' => $client->subCategoryRef->name]
+    //                     : null,
+    //                 'tags' => $tags->map(fn ($t) => ['id' => $t->id, 'name' => $t->name])->values(),
+    //                 'city'  => $client->city,
+    //                 'state' => $client->state,
+    //                 'rm'    => $client->rmRef
+    //                     ? ['id' => $client->rmRef->id, 'name' => $client->rmRef->name, 'username' => $client->rmRef->username]
+    //                     : null,
+    //                 'sales_person'    => $client->salesRef
+    //                     ? ['id' => $client->salesRef->id, 'name' => $client->salesRef->name, 'username' => $client->salesRef->username]
+    //                     : null,
+    //                 'record_created_at' => $client->created_at,
+    //                 'record_updated_at' => $client->updated_at,
+    //             ];
+
+    //             return response()->json([
+    //                 'code'    => 200,
+    //                 'status'  => true,
+    //                 'message' => 'Client fetched successfully.',
+    //                 'data'    => $data,
+    //             ], 200);
+    //         }
+
+    //         // ---------- List with filters + pagination ----------
+    //         $limit       = (int) $request->input('limit', 10);
+    //         $offset      = (int) $request->input('offset', 0);
+    //         $search      = trim((string) $request->input('search', ''));        // client name
+    //         $categoryRaw = $request->input('category');     // "1,5,9"
+    //         $subCatRaw   = $request->input('sub_category'); // "11,12"
+    //         $tagRaw      = $request->input('tags');         // "101,102,103"
+    //         $rmId        = $request->input('rm');                                // rm user id
+    //         $dateFrom    = $request->input('date_from');                         // YYYY-MM-DD
+    //         $dateTo      = $request->input('date_to');                           // YYYY-MM-DD
+
+
+    //         // helper: "1,5,9" → [1,5,9]  (int[])
+    //         $toIntArray = fn ($str) => $str
+    //             ? array_map('intval', array_filter(explode(',', $str)))
+    //             : [];
+
+    //         $categoryIds = $toIntArray($categoryRaw);
+    //         $subCatIds   = $toIntArray($subCatRaw);
+    //         $tagIds      = $toIntArray($tagRaw);
+
+    //         // total BEFORE filters
+    //         $total = ClientsModel::count();
+
+    //         $q = ClientsModel::with([
+    //                 'categoryRef:id,name',
+    //                 'subCategoryRef:id,name',
+    //                 'rmRef:id,name,username,email',
+    //                 'salesRef:id,name,username,email'
+    //             ])
+    //             ->select('id','name','category','sub_category','tags','city','state','rm','sales_person','created_at','updated_at')
+    //             ->orderBy('id','desc');
+
+    //         // ----- Filters -----
+    //         if ($search !== '') {
+    //             $q->where('name', 'like', "%{$search}%");
+    //         }
+    //         if ($categoryIds) {
+    //             $q->whereIn('category', $categoryIds);
+    //         }
+
+    //         if ($subCatIds) {
+    //             $q->whereIn('sub_category', $subCatIds);
+    //         }
+
+    //         if ($tagIds) {
+    //             // tags stored as comma-separated string → use FIND_IN_SET
+    //             $q->where(function ($q) use ($tagIds) {
+    //                 foreach ($tagIds as $tid) {
+    //                     $q->orWhereRaw('FIND_IN_SET(?, tags)', [$tid]);
+    //                 }
+    //             });
+    //         }
+    //         if (!empty($rmId)) {
+    //             $q->where('rm', (int) $rmId);
+    //         }
+    //         if (!empty($dateFrom)) {
+    //             $q->whereDate('created_at', '>=', $dateFrom);
+    //         }
+    //         if (!empty($dateTo)) {
+    //             $q->whereDate('created_at', '<=', $dateTo);
+    //         }
+
+    //         // Pagination
+    //         $items = $q->skip($offset)->take($limit)->get();
+
+    //         // Build a tag map for all items in this page (single query)
+    //         $allTagIds = $items->flatMap(function ($c) {
+    //                 return collect(explode(',', (string) $c->tags))
+    //                     ->map(fn($v) => (int) trim($v))
+    //                     ->filter();
+    //             })
+    //             ->unique()
+    //             ->values();
+
+    //         $tagMap = $allTagIds->isEmpty()
+    //             ? collect()
+    //             : TagsModel::whereIn('id', $allTagIds)
+    //                 ->select('id','name')
+    //                 ->get()
+    //                 ->keyBy('id');
+
+    //         $data = $items->map(function ($c) use ($tagMap) {
+    //             $tagIds = collect(explode(',', (string) $c->tags))
+    //                 ->map(fn($v) => (int) trim($v))
+    //                 ->filter()
+    //                 ->values();
+
+    //             $tagObjects = $tagIds->map(function ($id) use ($tagMap) {
+    //                 $t = $tagMap->get($id);
+    //                 return $t ? ['id' => $t->id, 'name' => $t->name] : null;
+    //             })->filter()->values();
+
+    //             return [
+    //                 'id'   => $c->id,
+    //                 'name' => $c->name,
+    //                 'category' => $c->categoryRef
+    //                     ? ['id' => $c->categoryRef->id, 'name' => $c->categoryRef->name]
+    //                     : null,
+    //                 'sub_category' => $c->subCategoryRef
+    //                     ? ['id' => $c->subCategoryRef->id, 'name' => $c->subCategoryRef->name]
+    //                     : null,
+    //                 'tags'  => $tagObjects,
+    //                 'city'  => $c->city,
+    //                 'state' => $c->state,
+    //                 'rm'    => $c->rmRef
+    //                     ? ['id' => $c->rmRef->id, 'name' => $c->rmRef->name, 'username' => $c->rmRef->username]
+    //                     : null,
+    //                 'sales_person'    => $c->salesRef
+    //                     ? ['id' => $c->salesRef->id, 'name' => $c->salesRef->name, 'username' => $c->salesRef->username]
+    //                     : null,
+    //                 'record_created_at' => $c->created_at,
+    //                 'record_updated_at' => $c->updated_at,
+    //             ];
+    //         });
+
+    //         return response()->json([
+    //             'code'    => 200,
+    //             'status'  => 'success',
+    //             'message' => 'Clients retrieved successfully.',
+    //             'total'   => $total,           // before filters
+    //             'count'   => $data->count(),   // after filters + pagination
+    //             'data'    => $data,
+    //         ], 200);
+    //     } catch (\Throwable $e) {
+    //         Log::error('Clients fetch failed', [
+    //             'error' => $e->getMessage(),
+    //             'file'  => $e->getFile(),
+    //             'line'  => $e->getLine(),
+    //         ]);
+
+    //         return response()->json([
+    //             'code'    => 500,
+    //             'status'  => false,
+    //             'message' => 'Something went wrong while fetching clients.',
+    //         ], 500);
+    //     }
+    // }
+
     public function fetch(Request $request, $id = null)
     {
         try {
-            // ---------- Single record ----------
+            /* =====================================================
+            *  SINGLE CLIENT FETCH
+            * ===================================================== */
             if ($id !== null) {
+
                 $client = ClientsModel::with([
                         'categoryRef:id,name',
                         'subCategoryRef:id,name',
                         'rmRef:id,name,username,email',
-                        'salesRef:id,name,username,email'
+                        'salesRef:id,name,username,email',
+                        'contactPersons.rmUser:id,name,username,email' // load contact RMs
                     ])
-                    ->select('id','name','category','sub_category','tags','city','state','rm', 'sales_person', 'created_at', 'updated_at')
+                    ->select('id','name','category','sub_category','tags','city','state','pincode','rm','sales_person','created_at','updated_at')
                     ->find($id);
 
-                if (! $client) {
+                if (!$client) {
                     return response()->json([
                         'code'    => 404,
                         'status'  => false,
@@ -156,7 +494,7 @@ class ClientsController extends Controller
                     ], 404);
                 }
 
-                // Parse tag ids and fetch tag objects
+                // Parse tag ids → tag objects
                 $tagIds = collect(explode(',', (string) $client->tags))
                     ->map(fn($v) => (int) trim($v))
                     ->filter()
@@ -167,25 +505,54 @@ class ClientsController extends Controller
                     ? collect()
                     : TagsModel::whereIn('id', $tagIds)->select('id','name')->get();
 
-                // Shape response
+                // Format contact persons
+                $contactPersons = $client->contactPersons->map(function ($cp) {
+                    return [
+                        'id'     => $cp->id,
+                        'name'   => $cp->name,
+                        'mobile' => $cp->mobile,
+                        'email'  => $cp->email,
+                        'rm'     => $cp->rmUser ? [
+                            'id'       => $cp->rmUser->id,
+                            'name'     => $cp->rmUser->name,
+                            'username' => $cp->rmUser->username,
+                        ] : null,
+                    ];
+                });
+
+                // Final response structure
                 $data = [
                     'id'   => $client->id,
                     'name' => $client->name,
+
                     'category' => $client->categoryRef
                         ? ['id' => $client->categoryRef->id, 'name' => $client->categoryRef->name]
                         : null,
+
                     'sub_category' => $client->subCategoryRef
                         ? ['id' => $client->subCategoryRef->id, 'name' => $client->subCategoryRef->name]
                         : null,
-                    'tags' => $tags->map(fn ($t) => ['id' => $t->id, 'name' => $t->name])->values(),
-                    'city'  => $client->city,
-                    'state' => $client->state,
-                    'rm'    => $client->rmRef
-                        ? ['id' => $client->rmRef->id, 'name' => $client->rmRef->name, 'username' => $client->rmRef->username]
-                        : null,
-                    'sales_person'    => $client->salesRef
-                        ? ['id' => $client->salesRef->id, 'name' => $client->salesRef->name, 'username' => $client->salesRef->username]
-                        : null,
+
+                    'tags' => $tags->map(fn($t) => ['id' => $t->id, 'name' => $t->name])->values(),
+
+                    'city'     => $client->city,
+                    'state'    => $client->state,
+                    'pincode'  => $client->pincode,
+
+                    'rm' => $client->rmRef ? [
+                        'id'       => $client->rmRef->id,
+                        'name'     => $client->rmRef->name,
+                        'username' => $client->rmRef->username
+                    ] : null,
+
+                    'sales_person' => $client->salesRef ? [
+                        'id'       => $client->salesRef->id,
+                        'name'     => $client->salesRef->name,
+                        'username' => $client->salesRef->username
+                    ] : null,
+
+                    'contact_person' => $contactPersons,
+
                     'record_created_at' => $client->created_at,
                     'record_updated_at' => $client->updated_at,
                 ];
@@ -198,117 +565,109 @@ class ClientsController extends Controller
                 ], 200);
             }
 
-            // ---------- List with filters + pagination ----------
-            $limit       = (int) $request->input('limit', 10);
-            $offset      = (int) $request->input('offset', 0);
-            $search      = trim((string) $request->input('search', ''));        // client name
-            $categoryRaw = $request->input('category');     // "1,5,9"
-            $subCatRaw   = $request->input('sub_category'); // "11,12"
-            $tagRaw      = $request->input('tags');         // "101,102,103"
-            $rmId        = $request->input('rm');                                // rm user id
-            $dateFrom    = $request->input('date_from');                         // YYYY-MM-DD
-            $dateTo      = $request->input('date_to');                           // YYYY-MM-DD
+            /* =====================================================
+            *  LIST MODE (FILTER + PAGINATION)
+            * ===================================================== */
 
+            $limit  = (int)$request->input('limit', 10);
+            $offset = (int)$request->input('offset', 0);
 
-            // helper: "1,5,9" → [1,5,9]  (int[])
-            $toIntArray = fn ($str) => $str
-                ? array_map('intval', array_filter(explode(',', $str)))
-                : [];
+            $search      = trim((string)$request->input('search', ''));
+            $categoryRaw = $request->input('category');
+            $subCatRaw   = $request->input('sub_category');
+            $tagRaw      = $request->input('tags');
+            $rmId        = $request->input('rm');
+            $dateFrom    = $request->input('date_from');
+            $dateTo      = $request->input('date_to');
+
+            $toIntArray = fn ($str) => $str ? array_map('intval', array_filter(explode(',', $str))) : [];
 
             $categoryIds = $toIntArray($categoryRaw);
             $subCatIds   = $toIntArray($subCatRaw);
             $tagIds      = $toIntArray($tagRaw);
 
-            // total BEFORE filters
             $total = ClientsModel::count();
 
             $q = ClientsModel::with([
                     'categoryRef:id,name',
                     'subCategoryRef:id,name',
                     'rmRef:id,name,username,email',
-                    'salesRef:id,name,username,email'
+                    'salesRef:id,name,username,email',
+                    'contactPersons' // Do not load RM here (performance)
                 ])
-                ->select('id','name','category','sub_category','tags','city','state','rm','sales_person','created_at','updated_at')
+                ->select('id','name','category','sub_category','tags','city','state','pincode','rm','sales_person','created_at','updated_at')
                 ->orderBy('id','desc');
 
-            // ----- Filters -----
-            if ($search !== '') {
-                $q->where('name', 'like', "%{$search}%");
-            }
-            if ($categoryIds) {
-                $q->whereIn('category', $categoryIds);
-            }
-
-            if ($subCatIds) {
-                $q->whereIn('sub_category', $subCatIds);
-            }
-
+            if ($search !== '') $q->where('name', 'like', "%{$search}%");
+            if ($categoryIds)   $q->whereIn('category', $categoryIds);
+            if ($subCatIds)     $q->whereIn('sub_category', $subCatIds);
             if ($tagIds) {
-                // tags stored as comma-separated string → use FIND_IN_SET
                 $q->where(function ($q) use ($tagIds) {
                     foreach ($tagIds as $tid) {
                         $q->orWhereRaw('FIND_IN_SET(?, tags)', [$tid]);
                     }
                 });
             }
-            if (!empty($rmId)) {
-                $q->where('rm', (int) $rmId);
-            }
-            if (!empty($dateFrom)) {
-                $q->whereDate('created_at', '>=', $dateFrom);
-            }
-            if (!empty($dateTo)) {
-                $q->whereDate('created_at', '<=', $dateTo);
-            }
+            if (!empty($rmId))  $q->where('rm', (int)$rmId);
+            if (!empty($dateFrom)) $q->whereDate('created_at', '>=', $dateFrom);
+            if (!empty($dateTo))   $q->whereDate('created_at', '<=', $dateTo);
 
-            // Pagination
             $items = $q->skip($offset)->take($limit)->get();
 
-            // Build a tag map for all items in this page (single query)
+            // Build tag map
             $allTagIds = $items->flatMap(function ($c) {
-                    return collect(explode(',', (string) $c->tags))
-                        ->map(fn($v) => (int) trim($v))
-                        ->filter();
-                })
-                ->unique()
-                ->values();
+                return collect(explode(',', (string)$c->tags))
+                    ->map(fn($v) => (int) trim($v))
+                    ->filter();
+            })->unique()->values();
 
             $tagMap = $allTagIds->isEmpty()
                 ? collect()
-                : TagsModel::whereIn('id', $allTagIds)
-                    ->select('id','name')
-                    ->get()
-                    ->keyBy('id');
+                : TagsModel::whereIn('id', $allTagIds)->select('id','name')->get()->keyBy('id');
 
+            // Final list response
             $data = $items->map(function ($c) use ($tagMap) {
-                $tagIds = collect(explode(',', (string) $c->tags))
+
+                $tagIds = collect(explode(',', (string)$c->tags))
                     ->map(fn($v) => (int) trim($v))
-                    ->filter()
-                    ->values();
+                    ->filter()->values();
 
                 $tagObjects = $tagIds->map(function ($id) use ($tagMap) {
                     $t = $tagMap->get($id);
-                    return $t ? ['id' => $t->id, 'name' => $t->name] : null;
+                    return $t ? ['id'=>$t->id,'name'=>$t->name] : null;
                 })->filter()->values();
 
                 return [
                     'id'   => $c->id,
                     'name' => $c->name,
+
                     'category' => $c->categoryRef
                         ? ['id' => $c->categoryRef->id, 'name' => $c->categoryRef->name]
                         : null,
+
                     'sub_category' => $c->subCategoryRef
                         ? ['id' => $c->subCategoryRef->id, 'name' => $c->subCategoryRef->name]
                         : null,
+
                     'tags'  => $tagObjects,
-                    'city'  => $c->city,
-                    'state' => $c->state,
-                    'rm'    => $c->rmRef
-                        ? ['id' => $c->rmRef->id, 'name' => $c->rmRef->name, 'username' => $c->rmRef->username]
-                        : null,
-                    'sales_person'    => $c->salesRef
-                        ? ['id' => $c->salesRef->id, 'name' => $c->salesRef->name, 'username' => $c->salesRef->username]
-                        : null,
+
+                    'city'     => $c->city,
+                    'state'    => $c->state,
+                    'pincode'  => $c->pincode,
+
+                    'rm' => $c->rmRef ? [
+                        'id' => $c->rmRef->id,
+                        'name' => $c->rmRef->name,
+                    ] : null,
+
+                    'sales_person' => $c->salesRef ? [
+                        'id' => $c->salesRef->id,
+                        'name' => $c->salesRef->name,
+                    ] : null,
+
+                    // Contact persons without RM details for list mode
+                    'contact_person_count' => $c->contactPersons->count(),
+
                     'record_created_at' => $c->created_at,
                     'record_updated_at' => $c->updated_at,
                 ];
@@ -316,12 +675,13 @@ class ClientsController extends Controller
 
             return response()->json([
                 'code'    => 200,
-                'status'  => 'success',
+                'status'  => true,
                 'message' => 'Clients retrieved successfully.',
-                'total'   => $total,           // before filters
-                'count'   => $data->count(),   // after filters + pagination
+                'total'   => $total,
+                'count'   => $data->count(),
                 'data'    => $data,
             ], 200);
+
         } catch (\Throwable $e) {
             Log::error('Clients fetch failed', [
                 'error' => $e->getMessage(),
@@ -361,6 +721,7 @@ class ClientsController extends Controller
                 'tags'          => ['required','string','max:255'], // comma-separated ids
                 'city'          => ['required','string','max:255'],
                 'state'         => ['required','string','max:255'],
+                'pincode'       => ['required','digits_between:4,10'],
                 'rm'            => ['required','integer','exists:users,id'],
                 'sales_person'  => ['required','integer','exists:users,id'],
             ]);
@@ -373,6 +734,7 @@ class ClientsController extends Controller
                 'tags'          => $request->input('tags', $client->tags),
                 'city'          => $request->input('city', $client->city),
                 'state'         => $request->input('state', $client->state),
+                'pincode'       => $request->input('pincode', $client->pincode),
                 'rm'            => $request->input('rm', $client->rm),
                 'sales_person'  => $request->input('sales_person', $client->rm),
             ];
@@ -414,6 +776,7 @@ class ClientsController extends Controller
                 'tags'         => $tags->map(fn($t)=>['id'=>$t->id,'name'=>$t->name])->values(),
                 'city'         => $fresh->city,
                 'state'        => $fresh->state,
+                'pincode'      => $fresh->pincode,
                 'rm'           => $fresh->rmRef
                                     ? ['id'=>$fresh->rmRef->id, 'name'=>$fresh->rmRef->name, 'username'=>$fresh->rmRef->username]
                                     : null,

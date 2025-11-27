@@ -19,7 +19,7 @@ class ClientContactPersonController extends Controller
 
                 'contacts.*.id'          => ['nullable', 'integer', 'min:1'],
                 'contacts.*.name'        => ['required', 'string', 'max:255'],
-                'contacts.*.designation' => ['nullable', 'string', 'max:255'],
+                'contacts.*.rm'          => ['required', 'integer', 'exists:users,id'], // 🔥 replaced designation
                 'contacts.*.mobile'      => ['nullable', 'string', 'max:20'],
                 'contacts.*.email'       => ['nullable', 'email', 'max:255'],
             ]);
@@ -27,25 +27,37 @@ class ClientContactPersonController extends Controller
             $clientId = (int) $validated['client'];
             $contacts = $validated['contacts'];
 
-            // 2️⃣ Extra rule: for EACH contact, at least one of designation/mobile/email is required
+            // 2️⃣ Validate RM user roles = staff
             foreach ($contacts as $idx => $c) {
-                $hasDesignation = !empty($c['designation'] ?? null);
-                $hasMobile      = !empty($c['mobile'] ?? null);
-                $hasEmail       = !empty($c['email'] ?? null);
+                $rmUser = UsersModel::find($c['rm']);
 
-                if (!$hasDesignation && !$hasMobile && !$hasEmail) {
+                if (!$rmUser || $rmUser->role !== 'staff') {
                     return response()->json([
                         'code'   => 422,
                         'status' => false,
-                        'message'=> "At least one of designation, mobile, or email is required for contact index {$idx}.",
+                        'message'=> "Invalid RM at index {$idx}. RM must be a valid staff user.",
                     ], 422);
                 }
             }
 
-            // 3️⃣ Validate that all passed IDs (if any) actually belong to this client
+            // 3️⃣ Extra rule: at least mobile OR email required
+            foreach ($contacts as $idx => $c) {
+                $hasMobile = !empty($c['mobile'] ?? null);
+                $hasEmail  = !empty($c['email'] ?? null);
+
+                if (!$hasMobile && !$hasEmail) {
+                    return response()->json([
+                        'code'   => 422,
+                        'status' => false,
+                        'message'=> "At least mobile or email is required for contact index {$idx}.",
+                    ], 422);
+                }
+            }
+
+            // 4️⃣ Validate that existing IDs belong to this client
             $idsProvided = collect($contacts)
                 ->pluck('id')
-                ->filter()        // remove null
+                ->filter()
                 ->unique()
                 ->values();
 
@@ -60,17 +72,15 @@ class ClientContactPersonController extends Controller
                     return response()->json([
                         'code'   => 422,
                         'status' => false,
-                        'message'=> 'One or more contact IDs do not belong to this client.',
-                        'errors' => [
-                            'invalid_contact_ids' => $invalid->values(),
-                        ],
+                        'message'=> 'Some contact IDs do not belong to this client.',
+                        'errors' => ['invalid_contact_ids' => $invalid->values()],
                     ], 422);
                 }
             }
 
-            // 4️⃣ Transaction: upsert + delete missing
+            // 5️⃣ Transaction: UPSERT + DELETE missing
             $finalContacts = DB::transaction(function () use ($clientId, $contacts) {
-                // existing contacts for this client
+
                 $existingIds = ClientsContactPersonModel::where('client', $clientId)
                     ->pluck('id')
                     ->toArray();
@@ -78,27 +88,27 @@ class ClientContactPersonController extends Controller
                 $keepIds = [];
 
                 foreach ($contacts as $c) {
-                    $id          = $c['id'] ?? null;
-                    $name        = $c['name'];
-                    $designation = $c['designation'] ?? null;
-                    $mobile      = $c['mobile'] ?? null;
-                    $email       = $c['email'] ?? null;
+                    $id     = $c['id'] ?? null;
+                    $name   = $c['name'];
+                    $rm     = $c['rm'];
+                    $mobile = $c['mobile'] ?? null;
+                    $email  = $c['email'] ?? null;
 
                     if (!empty($id)) {
-                        // UPDATE existing (we already validated that id belongs to client)
+                        // UPDATE
                         $contact = ClientsContactPersonModel::where('client', $clientId)->find($id);
                         $contact->update([
                             'name'        => $name,
-                            'designation' => $designation,
+                            'rm'          => $rm,          // 🔥 updated
                             'mobile'      => $mobile,
                             'email'       => $email,
                         ]);
                     } else {
-                        // CREATE new
+                        // INSERT
                         $contact = ClientsContactPersonModel::create([
                             'client'      => $clientId,
                             'name'        => $name,
-                            'designation' => $designation,
+                            'rm'          => $rm,          // 🔥 updated
                             'mobile'      => $mobile,
                             'email'       => $email,
                         ]);
@@ -107,25 +117,25 @@ class ClientContactPersonController extends Controller
                     $keepIds[] = $contact->id;
                 }
 
-                // Delete any old contacts that are not present in the new list
-                $idsToDelete = array_diff($existingIds, $keepIds);
-                if (!empty($idsToDelete)) {
+                // DELETE contacts not in new list
+                $toDelete = array_diff($existingIds, $keepIds);
+
+                if (!empty($toDelete)) {
                     ClientsContactPersonModel::where('client', $clientId)
-                        ->whereIn('id', $idsToDelete)
+                        ->whereIn('id', $toDelete)
                         ->delete();
                 }
 
-                // Return fresh list for this client
                 return ClientsContactPersonModel::where('client', $clientId)
                     ->orderBy('id')
                     ->get();
             });
 
-            // 5️⃣ Success response
+            // 6️⃣ Success response
             return response()->json([
                 'code'    => 201,
                 'status'  => true,
-                'message' => 'Client contact persons synced successfully!',
+                'message' => 'Contact persons synced successfully!',
                 'data'    => [
                     'client'   => $clientId,
                     'contacts' => $finalContacts,
@@ -133,6 +143,7 @@ class ClientContactPersonController extends Controller
             ], 201);
 
         } catch (\Illuminate\Validation\ValidationException $e) {
+
             return response()->json([
                 'code'    => 422,
                 'status'  => false,
@@ -141,7 +152,7 @@ class ClientContactPersonController extends Controller
             ], 422);
 
         } catch (\Throwable $e) {
-            Log::error('Contact Person bulk sync failed', [
+            Log::error('Contact sync failed', [
                 'error' => $e->getMessage(),
                 'file'  => $e->getFile(),
                 'line'  => $e->getLine(),
@@ -161,8 +172,8 @@ class ClientContactPersonController extends Controller
         try {
             // ---------- Fetch single by ID ----------
             if ($id !== null) {
-                $cp = ClientsContactPersonModel::with(['clientRef:id,name'])
-                    ->select('id', 'client', 'name', 'designation', 'mobile', 'email')
+                $cp = ClientsContactPersonModel::with(['clientRef:id,name', 'rmUser:id,name,username,email'])
+                    ->select('id', 'client', 'name', 'rm', 'mobile', 'email')
                     ->find($id);
 
                 if (! $cp) {
@@ -174,12 +185,14 @@ class ClientContactPersonController extends Controller
                 }
 
                 $data = [
-                    'id'          => $cp->id,
-                    'name'        => $cp->name,
-                    'designation' => $cp->designation,
-                    'mobile'      => $cp->mobile,
-                    'email'       => $cp->email,
-                    'client'      => $cp->clientRef
+                    'id'     => $cp->id,
+                    'name'   => $cp->name,
+                    'rm'     => $cp->rmUser
+                        ? ['id' => $cp->rmUser->id, 'name' => $cp->rmUser->name, 'username' => $cp->rmUser->username, 'email' => $cp->rmUser->email]
+                        : ($cp->rm ? ['id' => $cp->rm] : null),
+                    'mobile' => $cp->mobile,
+                    'email'  => $cp->email,
+                    'client' => $cp->clientRef
                         ? ['id' => $cp->clientRef->id, 'name' => $cp->clientRef->name]
                         : null,
                 ];
@@ -203,8 +216,8 @@ class ClientContactPersonController extends Controller
             $limit    = isset($validated['limit'])  ? (int) $validated['limit']  : 10;
             $offset   = isset($validated['offset']) ? (int) $validated['offset'] : 0;
 
-            $query = ClientsContactPersonModel::with(['clientRef:id,name'])
-                ->select('id', 'client', 'name', 'designation', 'mobile', 'email')
+            $query = ClientsContactPersonModel::with(['clientRef:id,name', 'rmUser:id,name,username,email'])
+                ->select('id', 'client', 'name', 'rm', 'mobile', 'email')
                 ->where('client', $clientId)          // 🔴 compulsory filter
                 ->orderBy('id', 'desc');
 
@@ -212,12 +225,14 @@ class ClientContactPersonController extends Controller
 
             $data = $items->map(function ($cp) {
                 return [
-                    'id'          => $cp->id,
-                    'name'        => $cp->name,
-                    'designation' => $cp->designation,
-                    'mobile'      => $cp->mobile,
-                    'email'       => $cp->email,
-                    'client'      => $cp->clientRef
+                    'id'     => $cp->id,
+                    'name'   => $cp->name,
+                    'rm'     => $cp->rmUser
+                        ? ['id' => $cp->rmUser->id, 'name' => $cp->rmUser->name, 'username' => $cp->rmUser->username, 'email' => $cp->rmUser->email]
+                        : ($cp->rm ? ['id' => $cp->rm] : null),
+                    'mobile' => $cp->mobile,
+                    'email'  => $cp->email,
+                    'client' => $cp->clientRef
                         ? ['id' => $cp->clientRef->id, 'name' => $cp->clientRef->name]
                         : null,
                 ];
@@ -262,51 +277,87 @@ class ClientContactPersonController extends Controller
 
             // 2) Validate core fields
             $request->validate([
-                'client'      => ['required','integer','exists:t_clients,id'],
-                'name'        => ['required','string','max:255'],
-                'designation' => ['nullable','string','max:255'],
-                'mobile'      => ['nullable','string','max:20'],
-                'email'       => ['nullable','email','max:255'],
+                'client' => ['required','integer','exists:t_clients,id'],
+                'name'   => ['required','string','max:255'],
+
+                // rm replaces old designation
+                'rm'     => ['sometimes','nullable','integer','exists:users,id'],
+
+                'mobile' => ['nullable','string','max:20'],
+                'email'  => ['nullable','email','max:255'],
             ]);
 
-            // 3) NEW RULE: request MUST include at least one of the three
-            if (
-                ! $request->filled('designation') &&
-                ! $request->filled('mobile') &&
-                ! $request->filled('email')
-            ) {
+            // 3) NEW RULE: rm must be present (non-null) OR we keep existing cp->rm.
+            // If caller wants to explicitly clear RM, they'd send rm=null (not allowed here).
+            // We'll enforce that final record has non-null rm value.
+            $incomingHasRm = $request->has('rm');
+            $finalRm = $incomingHasRm ? $request->input('rm') : $cp->rm;
+
+            if (empty($finalRm)) {
                 return response()->json([
                     'code'    => 422,
                     'status'  => false,
-                    'message' => 'Provide at least one of: designation, mobile, or email in the request.',
+                    'message' => 'rm is required and cannot be null. Provide a valid RM user id.',
                 ], 422);
             }
 
-            // 4) Column-wise update (keep existing if a field not sent)
+            // 4) Ensure the RM user exists and has role 'staff'
+            $rmUser = \DB::table('users')->select('id','role')->where('id', (int)$finalRm)->first();
+            if (! $rmUser) {
+                return response()->json([
+                    'code'    => 422,
+                    'status'  => false,
+                    'message' => 'Provided rm user does not exist.',
+                ], 422);
+            }
+            if (! isset($rmUser->role) || $rmUser->role !== 'staff') {
+                return response()->json([
+                    'code'    => 422,
+                    'status'  => false,
+                    'message' => 'Provided rm user must have role "staff".',
+                ], 422);
+            }
+
+            // 5) NEW RULE: at least one of rm / mobile / email must be present in request (or existing).
+            $hasMobile = $request->filled('mobile') || !empty($cp->mobile);
+            $hasEmail  = $request->filled('email')  || !empty($cp->email);
+            $hasRm     = !empty($finalRm);
+
+            if (! $hasRm && ! $hasMobile && ! $hasEmail) {
+                return response()->json([
+                    'code'    => 422,
+                    'status'  => false,
+                    'message' => 'Provide at least one of: rm, mobile, or email.',
+                ], 422);
+            }
+
+            // 6) Column-wise update (keep existing if a field not sent)
             $payload = [
-                'client'      => (int) $request->input('client'),
-                'name'        => $request->input('name'),
-                'designation' => $request->has('designation') ? $request->input('designation') : $cp->designation,
-                'mobile'      => $request->has('mobile')      ? $request->input('mobile')      : $cp->mobile,
-                'email'       => $request->has('email')       ? $request->input('email')       : $cp->email,
+                'client' => (int) $request->input('client'),
+                'name'   => $request->input('name'),
+                'rm'     => $finalRm,
+                'mobile' => $request->has('mobile') ? $request->input('mobile') : $cp->mobile,
+                'email'  => $request->has('email') ? $request->input('email') : $cp->email,
             ];
 
             DB::transaction(function () use ($id, $payload) {
                 ClientsContactPersonModel::where('id', $id)->update($payload);
             });
 
-            // 5) Fetch fresh with client object
-            $fresh = ClientsContactPersonModel::with(['clientRef:id,name'])
-                ->select('id','client','name','designation','mobile','email')
+            // 7) Fetch fresh with client and rm objects
+            $fresh = ClientsContactPersonModel::with(['clientRef:id,name', 'rmUser:id,name,username,email'])
+                ->select('id','client','name','rm','mobile','email')
                 ->find($id);
 
             $data = [
-                'id'          => $fresh->id,
-                'name'        => $fresh->name,
-                'designation' => $fresh->designation,
-                'mobile'      => $fresh->mobile,
-                'email'       => $fresh->email,
-                'client'      => $fresh->clientRef
+                'id'     => $fresh->id,
+                'name'   => $fresh->name,
+                'rm'     => $fresh->rmUser
+                    ? ['id' => $fresh->rmUser->id, 'name' => $fresh->rmUser->name, 'username' => $fresh->rmUser->username, 'email' => $fresh->rmUser->email]
+                    : ($fresh->rm ? ['id' => $fresh->rm] : null),
+                'mobile' => $fresh->mobile,
+                'email'  => $fresh->email,
+                'client' => $fresh->clientRef
                     ? ['id' => $fresh->clientRef->id, 'name' => $fresh->clientRef->name]
                     : null,
             ];
