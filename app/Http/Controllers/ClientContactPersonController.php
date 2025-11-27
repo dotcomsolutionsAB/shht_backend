@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use App\Models\ClientsContactPersonModel;
+use App\Models\User;
 use Illuminate\Http\Request;
 
 class ClientContactPersonController extends Controller
@@ -29,7 +30,7 @@ class ClientContactPersonController extends Controller
 
             // 2️⃣ Validate RM user roles = staff
             foreach ($contacts as $idx => $c) {
-                $rmUser = UsersModel::find($c['rm']);
+                $rmUser = User::find($c['rm']);
 
                 if (!$rmUser || $rmUser->role !== 'staff') {
                     return response()->json([
@@ -302,7 +303,7 @@ class ClientContactPersonController extends Controller
             }
 
             // 4) Ensure the RM user exists and has role 'staff'
-            $rmUser = \DB::table('users')->select('id','role')->where('id', (int)$finalRm)->first();
+            $rmUser = User->select('id','role')->where('id', (int)$finalRm)->first();
             if (! $rmUser) {
                 return response()->json([
                     'code'    => 422,
