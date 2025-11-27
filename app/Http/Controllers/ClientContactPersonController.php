@@ -276,91 +276,81 @@ class ClientContactPersonController extends Controller
                 ], 404);
             }
 
-            // 2) Validate core fields
+            // 2) Validate core fields (including rm)
             $request->validate([
-                'client' => ['required','integer','exists:t_clients,id'],
-                'name'   => ['required','string','max:255'],
-
-                // rm replaces old designation
-                'rm'     => ['sometimes','nullable','integer','exists:users,id'],
-
-                'mobile' => ['nullable','string','max:20'],
-                'email'  => ['nullable','email','max:255'],
+                'client'      => ['required','integer','exists:t_clients,id'],
+                'name'        => ['required','string','max:255'],
+                'rm'          => ['nullable','integer','exists:users,id'], // new: rm field
+                'designation' => ['sometimes','nullable','string','max:255'], // if you still accept
+                'mobile'      => ['sometimes','nullable','string','max:20'],
+                'email'       => ['sometimes','nullable','email','max:255'],
             ]);
 
-            // 3) NEW RULE: rm must be present (non-null) OR we keep existing cp->rm.
-            // If caller wants to explicitly clear RM, they'd send rm=null (not allowed here).
-            // We'll enforce that final record has non-null rm value.
-            $incomingHasRm = $request->has('rm');
-            $finalRm = $incomingHasRm ? $request->input('rm') : $cp->rm;
-
-            if (empty($finalRm)) {
+            // 3) require at least one of rm/mobile/email/designation OR keep old
+            if (
+                !$request->filled('rm') &&
+                !$request->filled('designation') &&
+                !$request->filled('mobile') &&
+                !$request->filled('email')
+            ) {
                 return response()->json([
                     'code'    => 422,
                     'status'  => false,
-                    'message' => 'rm is required and cannot be null. Provide a valid RM user id.',
+                    'message' => 'Provide at least one of: rm, designation, mobile, or email in the request.',
                 ], 422);
             }
 
-            // 4) Ensure the RM user exists and has role 'staff'
-            $rmUser = User->select('id','role')->where('id', (int)$finalRm)->first();
-            if (! $rmUser) {
-                return response()->json([
-                    'code'    => 422,
-                    'status'  => false,
-                    'message' => 'Provided rm user does not exist.',
-                ], 422);
-            }
-            if (! isset($rmUser->role) || $rmUser->role !== 'staff') {
-                return response()->json([
-                    'code'    => 422,
-                    'status'  => false,
-                    'message' => 'Provided rm user must have role "staff".',
-                ], 422);
-            }
+            // 4) If rm provided, verify user role = 'staff' (or the role key you use)
+            if ($request->filled('rm')) {
+                $rmUser = User::find((int)$request->input('rm'));
+                if (! $rmUser) {
+                    return response()->json([
+                        'code' => 422, 'status' => false,
+                        'message' => 'RM user not found.',
+                    ], 422);
+                }
 
-            // 5) NEW RULE: at least one of rm / mobile / email must be present in request (or existing).
-            $hasMobile = $request->filled('mobile') || !empty($cp->mobile);
-            $hasEmail  = $request->filled('email')  || !empty($cp->email);
-            $hasRm     = !empty($finalRm);
-
-            if (! $hasRm && ! $hasMobile && ! $hasEmail) {
-                return response()->json([
-                    'code'    => 422,
-                    'status'  => false,
-                    'message' => 'Provide at least one of: rm, mobile, or email.',
-                ], 422);
+                // adjust this check to your roles implementation:
+                // example: $rmUser->role === 'staff' OR $rmUser->hasRole('staff')
+                if (isset($rmUser->role) && $rmUser->role !== 'staff') {
+                    return response()->json([
+                        'code' => 422, 'status' => false,
+                        'message' => 'RM must be a user with role "staff".',
+                    ], 422);
+                }
             }
 
-            // 6) Column-wise update (keep existing if a field not sent)
+            // 5) Build payload — keep existing values if a field is not present
             $payload = [
                 'client' => (int) $request->input('client'),
                 'name'   => $request->input('name'),
-                'rm'     => $finalRm,
-                'mobile' => $request->has('mobile') ? $request->input('mobile') : $cp->mobile,
-                'email'  => $request->has('email') ? $request->input('email') : $cp->email,
+                // Use rm (integer) if provided, otherwise preserve existing
+                'rm'     => $request->has('rm') ? (int)$request->input('rm') : $cp->rm,
+                'designation' => $request->has('designation') ? $request->input('designation') : $cp->designation,
+                'mobile'      => $request->has('mobile')      ? $request->input('mobile')      : $cp->mobile,
+                'email'       => $request->has('email')       ? $request->input('email')       : $cp->email,
             ];
 
             DB::transaction(function () use ($id, $payload) {
                 ClientsContactPersonModel::where('id', $id)->update($payload);
             });
 
-            // 7) Fetch fresh with client and rm objects
-            $fresh = ClientsContactPersonModel::with(['clientRef:id,name', 'rmUser:id,name,username,email'])
-                ->select('id','client','name','rm','mobile','email')
+            // 6) Fetch fresh with client and rm user object
+            $fresh = ClientsContactPersonModel::with([
+                    'clientRef:id,name',
+                    'rmUser:id,name,username,email' // make sure rmUser relation exists in model
+                ])
+                ->select('id','client','name','rm','designation','mobile','email')
                 ->find($id);
 
             $data = [
-                'id'     => $fresh->id,
-                'name'   => $fresh->name,
-                'rm'     => $fresh->rmUser
-                    ? ['id' => $fresh->rmUser->id, 'name' => $fresh->rmUser->name, 'username' => $fresh->rmUser->username, 'email' => $fresh->rmUser->email]
-                    : ($fresh->rm ? ['id' => $fresh->rm] : null),
-                'mobile' => $fresh->mobile,
-                'email'  => $fresh->email,
-                'client' => $fresh->clientRef
-                    ? ['id' => $fresh->clientRef->id, 'name' => $fresh->clientRef->name]
-                    : null,
+                'id'          => $fresh->id,
+                'name'        => $fresh->name,
+                'rm'          => $fresh->rmUser ? ['id' => $fresh->rmUser->id, 'name' => $fresh->rmUser->name] : null,
+                'designation' => $fresh->designation,
+                'mobile'      => $fresh->mobile,
+                'email'       => $fresh->email,
+                'client'      => $fresh->clientRef ? ['id' => $fresh->clientRef->id, 'name' => $fresh->clientRef->name] : null,
             ];
 
             return response()->json([
