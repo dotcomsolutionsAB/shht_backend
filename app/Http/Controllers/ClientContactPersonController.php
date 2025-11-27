@@ -281,26 +281,10 @@ class ClientContactPersonController extends Controller
                 'client'      => ['required','integer','exists:t_clients,id'],
                 'name'        => ['required','string','max:255'],
                 'rm'          => ['nullable','integer','exists:users,id'], // new: rm field
-                'designation' => ['sometimes','nullable','string','max:255'], // if you still accept
                 'mobile'      => ['sometimes','nullable','string','max:20'],
                 'email'       => ['sometimes','nullable','email','max:255'],
             ]);
 
-            // 3) require at least one of rm/mobile/email/designation OR keep old
-            if (
-                !$request->filled('rm') &&
-                !$request->filled('designation') &&
-                !$request->filled('mobile') &&
-                !$request->filled('email')
-            ) {
-                return response()->json([
-                    'code'    => 422,
-                    'status'  => false,
-                    'message' => 'Provide at least one of: rm, designation, mobile, or email in the request.',
-                ], 422);
-            }
-
-            // 4) If rm provided, verify user role = 'staff' (or the role key you use)
             if ($request->filled('rm')) {
                 $rmUser = User::find((int)$request->input('rm'));
                 if (! $rmUser) {
@@ -326,7 +310,6 @@ class ClientContactPersonController extends Controller
                 'name'   => $request->input('name'),
                 // Use rm (integer) if provided, otherwise preserve existing
                 'rm'     => $request->has('rm') ? (int)$request->input('rm') : $cp->rm,
-                'designation' => $request->has('designation') ? $request->input('designation') : $cp->designation,
                 'mobile'      => $request->has('mobile')      ? $request->input('mobile')      : $cp->mobile,
                 'email'       => $request->has('email')       ? $request->input('email')       : $cp->email,
             ];
@@ -347,7 +330,6 @@ class ClientContactPersonController extends Controller
                 'id'          => $fresh->id,
                 'name'        => $fresh->name,
                 'rm'          => $fresh->rmUser ? ['id' => $fresh->rmUser->id, 'name' => $fresh->rmUser->name] : null,
-                'designation' => $fresh->designation,
                 'mobile'      => $fresh->mobile,
                 'email'       => $fresh->email,
                 'client'      => $fresh->clientRef ? ['id' => $fresh->clientRef->id, 'name' => $fresh->clientRef->name] : null,
