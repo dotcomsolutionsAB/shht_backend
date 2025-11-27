@@ -19,6 +19,7 @@ return new class extends Migration
             $table->string('tags');
             $table->string('city');
             $table->string('state');
+            $table->integer('pincode');
             $table->unsignedBigInteger('rm');
             $table->unsignedBigInteger('sales_person');
             $table->timestamps();
