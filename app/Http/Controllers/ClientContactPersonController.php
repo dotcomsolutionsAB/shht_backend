@@ -285,6 +285,20 @@ class ClientContactPersonController extends Controller
                 'email'       => ['sometimes','nullable','email','max:255'],
             ]);
 
+            // 3) Optional: if you want at least one of rm/mobile/email to be present in the request:
+            if (
+                !$request->filled('rm') &&
+                !$request->filled('mobile') &&
+                !$request->filled('email')
+            ) {
+                return response()->json([
+                    'code'    => 422,
+                    'status'  => false,
+                    'message' => 'Provide at least one of: rm, mobile, or email in the request.',
+                ], 422);
+            }
+
+            // 4) If rm provided, ensure user exists and has role staff (adapt to your role scheme)
             if ($request->filled('rm')) {
                 $rmUser = User::find((int)$request->input('rm'));
                 if (! $rmUser) {
@@ -294,8 +308,7 @@ class ClientContactPersonController extends Controller
                     ], 422);
                 }
 
-                // adjust this check to your roles implementation:
-                // example: $rmUser->role === 'staff' OR $rmUser->hasRole('staff')
+                // change this to match your app's role setup
                 if (isset($rmUser->role) && $rmUser->role !== 'staff') {
                     return response()->json([
                         'code' => 422, 'status' => false,
@@ -308,10 +321,9 @@ class ClientContactPersonController extends Controller
             $payload = [
                 'client' => (int) $request->input('client'),
                 'name'   => $request->input('name'),
-                // Use rm (integer) if provided, otherwise preserve existing
                 'rm'     => $request->has('rm') ? (int)$request->input('rm') : $cp->rm,
-                'mobile'      => $request->has('mobile')      ? $request->input('mobile')      : $cp->mobile,
-                'email'       => $request->has('email')       ? $request->input('email')       : $cp->email,
+                'mobile' => $request->has('mobile') ? $request->input('mobile') : $cp->mobile,
+                'email'  => $request->has('email') ? $request->input('email') : $cp->email,
             ];
 
             DB::transaction(function () use ($id, $payload) {
@@ -321,18 +333,18 @@ class ClientContactPersonController extends Controller
             // 6) Fetch fresh with client and rm user object
             $fresh = ClientsContactPersonModel::with([
                     'clientRef:id,name',
-                    'rmUser:id,name,username,email' // make sure rmUser relation exists in model
+                    'rmUser:id,name,username,email'
                 ])
-                ->select('id','client','name','rm','designation','mobile','email')
+                ->select('id','client','name','rm','mobile','email') // <-- removed 'designation'
                 ->find($id);
 
             $data = [
-                'id'          => $fresh->id,
-                'name'        => $fresh->name,
-                'rm'          => $fresh->rmUser ? ['id' => $fresh->rmUser->id, 'name' => $fresh->rmUser->name] : null,
-                'mobile'      => $fresh->mobile,
-                'email'       => $fresh->email,
-                'client'      => $fresh->clientRef ? ['id' => $fresh->clientRef->id, 'name' => $fresh->clientRef->name] : null,
+                'id'     => $fresh->id,
+                'name'   => $fresh->name,
+                'rm'     => $fresh->rmUser ? ['id' => $fresh->rmUser->id, 'name' => $fresh->rmUser->name] : null,
+                'mobile' => $fresh->mobile,
+                'email'  => $fresh->email,
+                'client' => $fresh->clientRef ? ['id' => $fresh->clientRef->id, 'name' => $fresh->clientRef->name] : null,
             ];
 
             return response()->json([
@@ -364,6 +376,7 @@ class ClientContactPersonController extends Controller
             ], 500);
         }
     }
+
 
     // delete
     public function delete(Request $request, $id)
