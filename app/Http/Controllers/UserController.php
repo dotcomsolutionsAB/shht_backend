@@ -61,7 +61,7 @@ class UserController extends Controller
 
             // 3) Return a safe payload (never return password)
             return response()->json([
-                'code'    => 201,
+                'code'    => 200,
                 'status'  => true,
                 'message' => 'User created successfully.',
                 'data'    => [
@@ -77,7 +77,7 @@ class UserController extends Controller
                     'whatsapp_status' => $user->whatsapp_status,
                     'created_at'    => $user->created_at,
                 ],
-            ], 201);
+            ], 200);
 
         } catch (\Throwable $e) {
             Log::error('User create failed', [

@@ -45,7 +45,7 @@ class InvoiceController extends Controller
 
             // 4️⃣ Build response
             return response()->json([
-                'code'    => 201,
+                'code'    => 200,
                 'status'  => true,
                 'message' => 'Invoice created successfully!',
                 'data'    => [
@@ -69,7 +69,7 @@ class InvoiceController extends Controller
                         : null,
                     'created_at' => $invoice->created_at,
                 ],
-            ], 201);
+            ], 200);
 
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json([

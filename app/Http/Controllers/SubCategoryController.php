@@ -33,11 +33,11 @@ class SubCategoryController extends Controller
             });
 
             return response()->json([
-                'code'    => 201,
+                'code'    => 200,
                 'status'  => true,
                 'message' => 'Sub-category created successfully!',
                 'data'    => ['id'=>$sub->id, 'category'=>$sub->category, 'name'=>$sub->name],
-            ], 201);
+            ], 200);
 
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json(['code'=>422,'status'=>false,'message'=>'Validation error','errors'=>$e->errors()], 422);

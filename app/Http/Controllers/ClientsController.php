@@ -115,14 +115,14 @@ class ClientsController extends Controller
 
             // 5️⃣ Success response
             return response()->json([
-                'code'    => 201,
+                'code'    => 200,
                 'status'  => true,
                 'message' => 'Client & contact persons created successfully!',
                 'data'    => [
                     'client'   => $result['client'],
                     'contacts' => $result['contacts'],
                 ],
-            ], 201);
+            ], 200);
 
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json([

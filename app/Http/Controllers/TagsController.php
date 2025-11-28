@@ -27,11 +27,11 @@ class TagsController extends Controller
             });
 
             return response()->json([
-                'code'    => 201,
+                'code'    => 200,
                 'status'  => true,
                 'message' => 'Tag created successfully!',
                 'data'    => ['id' => $tag->id, 'name' => $tag->name],
-            ], 201);
+            ], 200);
 
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json([

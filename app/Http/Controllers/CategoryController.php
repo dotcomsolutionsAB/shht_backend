@@ -27,14 +27,14 @@ class CategoryController extends Controller
 
             // 3) Success response
             return response()->json([
-                'code'    => 201,
+                'code'    => 200,
                 'status'  => true,
                 'message' => 'Category created successfully!',
                 'data'    => [
                     'id'   => $category->id,
                     'name' => $category->name,
                 ],
-            ], 201);
+            ], 200);
 
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json([

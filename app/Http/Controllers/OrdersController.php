@@ -85,7 +85,7 @@ class OrdersController extends Controller
 
             // 3) Success response
             return response()->json([
-                'code'    => 201,
+                'code'    => 200,
                 'status'  => true,
                 'message' => 'Order created successfully!',
                 'data'    => [
@@ -107,7 +107,7 @@ class OrdersController extends Controller
                     'drive_link'            => $order->drive_link,
                     'created_at'            => $order->created_at,
                 ],
-            ], 201);
+            ], 200);
 
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json([

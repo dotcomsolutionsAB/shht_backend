@@ -134,14 +134,14 @@ class ClientContactPersonController extends Controller
 
             // 6️⃣ Success response
             return response()->json([
-                'code'    => 201,
+                'code'    => 200,
                 'status'  => true,
                 'message' => 'Contact persons synced successfully!',
                 'data'    => [
                     'client'   => $clientId,
                     'contacts' => $finalContacts,
                 ],
-            ], 201);
+            ], 200);
 
         } catch (\Illuminate\Validation\ValidationException $e) {
 

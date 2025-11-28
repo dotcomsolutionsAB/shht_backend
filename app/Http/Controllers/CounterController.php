@@ -31,7 +31,7 @@ class CounterController extends Controller
             });
 
             return response()->json([
-                'code'    => 201,
+                'code'    => 200,
                 'status'  => true,
                 'message' => 'Counter created successfully!',
                 'data'    => [
@@ -40,7 +40,7 @@ class CounterController extends Controller
                     'prefix'  => $counter->prefix,
                     'postfix' => $counter->postfix,
                 ],
-            ], 201);
+            ], 200);
 
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json([
