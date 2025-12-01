@@ -384,7 +384,7 @@ class ClientContactPersonController extends Controller
         try {
             // 1️⃣ Fetch the record (with client info)
             $cp = ClientsContactPersonModel::with(['clientRef:id,name'])
-                ->select('id','client','name','designation','mobile','email')
+                ->select('id','client','name','rm','mobile','email')
                 ->find($id);
 
             if (! $cp) {
@@ -399,7 +399,7 @@ class ClientContactPersonController extends Controller
             $snapshot = [
                 'id'          => $cp->id,
                 'name'        => $cp->name,
-                'designation' => $cp->designation,
+                'rm'          => $cp->rm,
                 'mobile'      => $cp->mobile,
                 'email'       => $cp->email,
                 'client'      => $cp->clientRef
