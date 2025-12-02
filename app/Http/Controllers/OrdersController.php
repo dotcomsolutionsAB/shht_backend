@@ -225,7 +225,7 @@ class OrdersController extends Controller
 
             $q = OrdersModel::with([
                     'clientRef:id,name',
-                    'contactRef:id,client,name,designation',
+                    'contactRef:id,client,name,rm',
                     'initiatedByRef:id,name,username',
                     'checkedByRef:id,name,username',
                     'dispatchedByRef:id,name,username',
@@ -287,7 +287,7 @@ class OrdersController extends Controller
                         ? [
                             'id' => $o->contactRef->id,
                             'name' => $o->contactRef->name,
-                            'designation' => $o->contactRef->designation,
+                            'rm' => $o->contactRef->rm,
                             'mobile' => $o->contactRef->mobile,
                             'email' => $o->contactRef->email,
                         ] : null,
@@ -393,7 +393,7 @@ class OrdersController extends Controller
             // 4️⃣ Fetch updated record with relations
             $fresh = OrdersModel::with([
                 'clientRef:id,name',
-                'contactRef:id,name,mobile,email,designation',
+                'contactRef:id,name,mobile,email,rm',
                 'initiatedByRef:id,name,username',
                 'checkedByRef:id,name,username',
                 'dispatchedByRef:id,name,username',
@@ -416,7 +416,7 @@ class OrdersController extends Controller
                     'client_contact_person' => $fresh->contactRef ? [
                         'id' => $fresh->contactRef->id,
                         'name' => $fresh->contactRef->name,
-                        'designation' => $fresh->contactRef->designation,
+                        'rm' => $fresh->contactRef->rm,
                         'mobile' => $fresh->contactRef->mobile,
                         'email' => $fresh->contactRef->email,
                     ] : null,

@@ -32,9 +32,6 @@ class UserController extends Controller
             'mobile'        => ['required', 'string', 'max:15'],
             'order_views'   => ['required', Rule::in(['self', 'global'])],
             'change_status' => ['required', Rule::in(['0', '1'])],
-            'whatsapp_status' => ['nullable', Rule::in(['yes','no'])],
-            'email_status'    => ['nullable', Rule::in(['yes','no'])],
-
         ]);
 
         // 2) Create user inside a transaction
@@ -51,8 +48,8 @@ class UserController extends Controller
                 $u->mobile        = $validated['mobile'];
                 $u->order_views   = $validated['order_views']   ?? 'self';
                 $u->change_status = $validated['change_status'] ?? '0';
-                $u->email_status    = !empty($validated['email']) ? 'yes' : 'no';
-                $u->whatsapp_status = $validated['whatsapp_status'] ?? null;
+                $u->email_status    = 'no';
+                $u->whatsapp_status = 'no';
 
                 $u->save();
 
@@ -201,6 +198,8 @@ class UserController extends Controller
                 'mobile'        => ['required', 'string', 'max:15'],
                 'order_views'   => ['required',Rule::in(['self','global'])],
                 'change_status' => ['required',Rule::in(['0','1'])],
+                'whatsapp_status' => ['nullable', Rule::in(['yes','no'])],
+                'email_status'    => ['nullable', Rule::in(['yes','no'])],
             ]);
 
             $updated = User::where('id', $id)->update([
@@ -211,9 +210,11 @@ class UserController extends Controller
                 'mobile'        => $request->mobile,
                 'order_views'   => $request->order_views,
                 'change_status' => $request->change_status,
+                'email_status' => $request->email_status,
+                'whatsapp_status' => $request->whatsapp_status,
             ]);
 
-            $user = User::select('id','name','email','username','mobile','order_views','change_status','updated_at')
+            $user = User::select('id','name','email','username','mobile','order_views','change_status','updated_at', 'email_status', 'whatsapp_status')
                         ->find($id);
 
             return response()->json([
