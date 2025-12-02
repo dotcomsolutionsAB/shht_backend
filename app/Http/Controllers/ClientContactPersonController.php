@@ -9,151 +9,84 @@ use Illuminate\Http\Request;
 
 class ClientContactPersonController extends Controller
 {
-    //
-    public function create(Request $request)
+    // create
+   public function create(Request $request)
     {
         try {
-            // 1️⃣ Validate basic structure
+            // 1️⃣ Validate: same wrapper, exactly ONE contact, no id
             $validated = $request->validate([
-                'client'                 => ['required', 'integer', 'exists:t_clients,id'],
-                'contacts'               => ['required', 'array', 'min:1'],
+                'client'    => ['required', 'integer', 'exists:t_clients,id'],
+                'contacts'  => ['required', 'array', 'size:1'],
 
-                'contacts.*.id'          => ['nullable', 'integer', 'min:1'],
-                'contacts.*.name'        => ['required', 'string', 'max:255'],
-                'contacts.*.rm'          => ['required', 'integer', 'exists:users,id'], // 🔥 replaced designation
-                'contacts.*.mobile'      => ['nullable', 'string', 'max:20'],
-                'contacts.*.email'       => ['nullable', 'email', 'max:255'],
+                'contacts.0.name'   => ['required', 'string', 'max:255'],
+                'contacts.0.rm'     => ['required', 'integer', 'exists:users,id'],
+                'contacts.0.mobile' => ['nullable', 'string', 'max:20'],
+                'contacts.0.email'  => ['nullable', 'email', 'max:255'],
             ]);
 
-            $clientId = (int) $validated['client'];
-            $contacts = $validated['contacts'];
+            $clientId    = (int) $validated['client'];
+            $contactData = $validated['contacts'][0]; // 🔥 only first one
 
-            // 2️⃣ Validate RM user roles = staff
-            foreach ($contacts as $idx => $c) {
-                $rmUser = User::find($c['rm']);
+            $name   = $contactData['name'];
+            $rm     = $contactData['rm'];
+            $mobile = $contactData['mobile'] ?? null;
+            $email  = $contactData['email'] ?? null;
 
-                if (!$rmUser || $rmUser->role !== 'staff') {
-                    return response()->json([
-                        'code'   => 422,
-                        'status' => false,
-                        'message'=> "Invalid RM at index {$idx}. RM must be a valid staff user.",
-                    ], 422);
-                }
+            // 2️⃣ RM must be staff
+            $rmUser = User::find($rm);
+            if (!$rmUser || $rmUser->role !== 'staff') {
+                return response()->json([
+                    'code'    => 422,
+                    'status'  => false,
+                    'message' => "Invalid RM. Selected RM must be a staff user.",
+                ], 422);
             }
 
-            // 3️⃣ Extra rule: at least mobile OR email required
-            foreach ($contacts as $idx => $c) {
-                $hasMobile = !empty($c['mobile'] ?? null);
-                $hasEmail  = !empty($c['email'] ?? null);
-
-                if (!$hasMobile && !$hasEmail) {
-                    return response()->json([
-                        'code'   => 422,
-                        'status' => false,
-                        'message'=> "At least mobile or email is required for contact index {$idx}.",
-                    ], 422);
-                }
+            // 3️⃣ At least mobile OR email
+            if (empty($mobile) && empty($email)) {
+                return response()->json([
+                    'code'    => 422,
+                    'status'  => false,
+                    'message' => "At least mobile or email is required for the contact.",
+                ], 422);
             }
 
-            // 4️⃣ Validate that existing IDs belong to this client
-            $idsProvided = collect($contacts)
-                ->pluck('id')
-                ->filter()
-                ->unique()
-                ->values();
+            // 4️⃣ Always INSERT a new contact (no update, no delete)
+            $newContact = ClientsContactPersonModel::create([
+                'client' => $clientId,
+                'name'   => $name,
+                'rm'     => $rm,
+                'mobile' => $mobile,
+                'email'  => $email,
+            ]);
 
-            if ($idsProvided->isNotEmpty()) {
-                $validIds = ClientsContactPersonModel::where('client', $clientId)
-                    ->whereIn('id', $idsProvided)
-                    ->pluck('id');
+            // 5️⃣ You can either return only new contact...
+            // or also send all contacts for that client (for UI refresh)
+            $allContacts = ClientsContactPersonModel::where('client', $clientId)
+                ->orderBy('id')
+                ->get();
 
-                $invalid = $idsProvided->diff($validIds);
-
-                if ($invalid->isNotEmpty()) {
-                    return response()->json([
-                        'code'   => 422,
-                        'status' => false,
-                        'message'=> 'Some contact IDs do not belong to this client.',
-                        'errors' => ['invalid_contact_ids' => $invalid->values()],
-                    ], 422);
-                }
-            }
-
-            // 5️⃣ Transaction: UPSERT + DELETE missing
-            $finalContacts = DB::transaction(function () use ($clientId, $contacts) {
-
-                $existingIds = ClientsContactPersonModel::where('client', $clientId)
-                    ->pluck('id')
-                    ->toArray();
-
-                $keepIds = [];
-
-                foreach ($contacts as $c) {
-                    $id     = $c['id'] ?? null;
-                    $name   = $c['name'];
-                    $rm     = $c['rm'];
-                    $mobile = $c['mobile'] ?? null;
-                    $email  = $c['email'] ?? null;
-
-                    if (!empty($id)) {
-                        // UPDATE
-                        $contact = ClientsContactPersonModel::where('client', $clientId)->find($id);
-                        $contact->update([
-                            'name'        => $name,
-                            'rm'          => $rm,          // 🔥 updated
-                            'mobile'      => $mobile,
-                            'email'       => $email,
-                        ]);
-                    } else {
-                        // INSERT
-                        $contact = ClientsContactPersonModel::create([
-                            'client'      => $clientId,
-                            'name'        => $name,
-                            'rm'          => $rm,          // 🔥 updated
-                            'mobile'      => $mobile,
-                            'email'       => $email,
-                        ]);
-                    }
-
-                    $keepIds[] = $contact->id;
-                }
-
-                // DELETE contacts not in new list
-                $toDelete = array_diff($existingIds, $keepIds);
-
-                if (!empty($toDelete)) {
-                    ClientsContactPersonModel::where('client', $clientId)
-                        ->whereIn('id', $toDelete)
-                        ->delete();
-                }
-
-                return ClientsContactPersonModel::where('client', $clientId)
-                    ->orderBy('id')
-                    ->get();
-            });
-
-            // 6️⃣ Success response
             return response()->json([
                 'code'    => 200,
                 'status'  => true,
-                'message' => 'Contact persons synced successfully!',
+                'message' => 'Contact person created successfully!',
                 'data'    => [
                     'client'   => $clientId,
-                    'contacts' => $finalContacts,
+                    'contacts' => $allContacts,
+                    'new'      => $newContact,
                 ],
             ], 200);
 
         } catch (\Illuminate\Validation\ValidationException $e) {
-
             return response()->json([
                 'code'    => 422,
                 'status'  => false,
                 'message' => 'Validation error!',
                 'errors'  => $e->errors(),
             ], 422);
-
         } catch (\Throwable $e) {
-            Log::error('Contact sync failed', [
+
+            Log::error('Contact create failed', [
                 'error' => $e->getMessage(),
                 'file'  => $e->getFile(),
                 'line'  => $e->getLine(),
@@ -162,7 +95,7 @@ class ClientContactPersonController extends Controller
             return response()->json([
                 'code'    => 500,
                 'status'  => false,
-                'message' => 'Something went wrong while syncing contact persons!',
+                'message' => 'Something went wrong while creating contact person!',
             ], 500);
         }
     }
