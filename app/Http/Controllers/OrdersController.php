@@ -703,6 +703,8 @@ class OrdersController extends Controller
                     // save who is triggering the dispatch
                     $extra['initiated_by'] = auth()->id();   // <-- from token
                     $extra['dispatched_by'] = $dispatchedBy; // <-- from request
+                    //  set dispatched_date to today
+                    $extra['dispatched_date'] = now()->toDateString(); // YYYY-MM-DD
                     break;
 
                 case 'invoiced':
@@ -745,6 +747,7 @@ class OrdersController extends Controller
                 'data'    => [
                     'order_id' => $order->id,
                     'status'   => $order->status,
+                    'dispatched_date' => $order->dispatched_date,
                 ],
             ], 200);
         } catch (\Throwable $e) {
