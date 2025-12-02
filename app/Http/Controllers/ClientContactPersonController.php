@@ -176,7 +176,7 @@ class ClientContactPersonController extends Controller
                 'code'    => 200,
                 'status'  => true,
                 'message' => 'Contact persons fetched successfully.',
-                'count'   => $data->count(),
+                'total'   => $data->count(),
                 'data'    => $data,
             ], 200);
 
