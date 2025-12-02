@@ -48,6 +48,7 @@ return new class extends Migration
             $table->unsignedBigInteger('initiated_by');
             $table->unsignedBigInteger('checked_by');
             $table->unsignedBigInteger('dispatched_by');
+            $table->date('dispatched_date');
 
             // Drive link
             $table->string('drive_link')->nullable();

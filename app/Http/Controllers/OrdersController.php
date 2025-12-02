@@ -50,11 +50,39 @@ class OrdersController extends Controller
                 'drive_link'             => ['nullable','string','max:255'],
             ]);
 
-            // 2) Create inside a DB transaction (includes counter reservation)
+            // 2) Extra checks: checked_by and dispatched_by MUST be staff
+            $checkedUser = User::find($request->checked_by);
+            if (!$checkedUser || $checkedUser->role !== 'staff') {
+                return response()->json([
+                    'code'    => 422,
+                    'status'  => false,
+                    'message' => 'Checked by user must be a valid staff user.',
+                ], 422);
+            }
+
+            $dispatchedUser = User::find($request->dispatched_by);
+            if (!$dispatchedUser || $dispatchedUser->role !== 'staff') {
+                return response()->json([
+                    'code'    => 422,
+                    'status'  => false,
+                    'message' => 'Dispatched by user must be a valid staff user.',
+                ], 422);
+            }
+
+            // 3) Create inside a DB transaction (includes counter reservation)
             $order = DB::transaction(function () use ($request) {
 
                 // Reserve counter / generate so_no via CounterController helper
                 $counter = $this->counter->getOrIncrementForCompany($request->company);
+
+                // Determine final status
+                $status = $request->input('status', 'pending');
+
+                // If order is dispatched at creation time, set dispatched_date = today
+                $dispatchedDate = null;
+                if ($status === 'dispatched') {
+                    $dispatchedDate = now()->toDateString(); // store only date (YYYY-MM-DD)
+                }
 
                 // Persist order
                 return OrdersModel::create([
@@ -73,7 +101,8 @@ class OrdersController extends Controller
 
                     'invoice'               => $request->invoice, // nullable
 
-                    'status'                => $request->input('status', 'pending'),
+                    'status'                => $status,
+                    'dispatched_date'       => $dispatchedDate,
 
                     'initiated_by'          => (int) $request->initiated_by,
                     'checked_by'            => (int) $request->checked_by,
@@ -83,7 +112,7 @@ class OrdersController extends Controller
                 ]);
             });
 
-            // 3) Success response
+            // 4) Success response
             return response()->json([
                 'code'    => 200,
                 'status'  => true,
@@ -96,6 +125,7 @@ class OrdersController extends Controller
                     'order_no'              => $order->order_no,
                     'order_date'            => $order->order_date,
                     'status'                => $order->status,
+                    'dispatched_date'       => $order->dispatched_date,
                     'client'                => $order->client,
                     'client_contact_person' => $order->client_contact_person,
                     'email'                 => $order->email,
@@ -153,7 +183,7 @@ class OrdersController extends Controller
                         'so_no','so_date','order_no','order_date',
                         'invoice','status',
                         'initiated_by','checked_by','dispatched_by',
-                        'drive_link','created_at','updated_at'
+                        'dispatched_date', 'drive_link','created_at','updated_at'
                     )
                     ->find($id);
 
@@ -172,6 +202,7 @@ class OrdersController extends Controller
                     'order_no'  => $o->order_no,
                     'order_date'=> $o->order_date,
                     'status'    => $o->status,
+                    'dispatched_date' => $o->dispatched_date,
                     'client'    => $o->clientRef
                         ? ['id'=>$o->clientRef->id, 'name'=>$o->clientRef->name]
                         : null,
@@ -237,7 +268,7 @@ class OrdersController extends Controller
                     'so_no','so_date','order_no','order_date',
                     'invoice','status',
                     'initiated_by','checked_by','dispatched_by',
-                    'drive_link','created_at','updated_at'
+                    'dispatched_date','drive_link','created_at','updated_at'
                 )
                 ->orderBy('id','desc');
 
@@ -281,6 +312,7 @@ class OrdersController extends Controller
                     'order_no'  => $o->order_no,
                     'order_date'=> $o->order_date,
                     'status'    => $o->status,
+                    'dispatched_date'    => $o->dispatched_date,
                     'client'    => $o->clientRef
                         ? ['id'=>$o->clientRef->id, 'name'=>$o->clientRef->name]
                         : null,
