@@ -48,8 +48,8 @@ class UserController extends Controller
                 $u->mobile        = $validated['mobile'];
                 $u->order_views   = $validated['order_views']   ?? 'self';
                 $u->change_status = $validated['change_status'] ?? '0';
-                $u->email_status    = 'no';
-                $u->whatsapp_status = 'no';
+                $u->email_status    = '0';
+                $u->whatsapp_status = '0';
 
                 $u->save();
 
@@ -198,8 +198,8 @@ class UserController extends Controller
                 'mobile'        => ['required', 'string', 'max:15'],
                 'order_views'   => ['required',Rule::in(['self','global'])],
                 'change_status' => ['required',Rule::in(['0','1'])],
-                'whatsapp_status' => ['nullable', Rule::in(['yes','no'])],
-                'email_status'    => ['nullable', Rule::in(['yes','no'])],
+                'whatsapp_status' => ['nullable', Rule::in(['0','1'])],
+                'email_status'    => ['nullable', Rule::in(['0','1'])],
             ]);
 
             $updated = User::where('id', $id)->update([

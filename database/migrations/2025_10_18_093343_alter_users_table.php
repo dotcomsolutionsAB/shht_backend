@@ -20,8 +20,8 @@ return new class extends Migration
             $table->enum('order_views', ['self', 'global'])->default('self')->after('mobile');
             $table->enum('change_status', ['0', '1'])->default('0')->after('order_views');
             // NEW FIELDS
-            $table->enum('whatsapp_status', ['yes', 'no'])->default('no')->after('change_status');
-            $table->enum('email_status', ['yes', 'no'])->default('no')->after('whatsapp');
+            $table->enum('whatsapp_status', ['0', '1'])->default('0')->after('change_status');
+            $table->enum('email_status', ['0', '1'])->default('0')->after('whatsapp');
             // Make the email column nullable
             $table->string('email')->nullable()->change();
         });

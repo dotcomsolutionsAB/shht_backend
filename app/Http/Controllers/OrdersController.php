@@ -229,6 +229,7 @@ class OrdersController extends Controller
                     'initiatedByRef:id,name,username',
                     'checkedByRef:id,name,username',
                     'dispatchedByRef:id,name,username',
+                    'invoiceRef:id,invoice_number,invoice_date',
                 ])
                 ->select(
                     'id','company','client','client_contact_person',
@@ -293,7 +294,15 @@ class OrdersController extends Controller
                         ] : null,
                     'email'  => $o->email,
                     'mobile' => $o->mobile,
-                    'invoice' => $o->invoice ? ['id' => (int) $o->invoice] : null,
+
+                    // Full invoice object
+                    'invoice' => $o->invoiceRef
+                        ? [
+                            'id'             => $o->invoiceRef->id,
+                            'invoice_number' => $o->invoiceRef->invoice_number,
+                            'invoice_date'   => $o->invoiceRef->invoice_date,
+                        ]
+                        : null,
                     'initiated_by'  => $o->initiatedByRef ? ['id'=>$o->initiatedByRef->id,'name'=>$o->initiatedByRef->name,'username'=>$o->initiatedByRef->username] : null,
                     'checked_by'    => $o->checkedByRef   ? ['id'=>$o->checkedByRef->id,'name'=>$o->checkedByRef->name,'username'=>$o->checkedByRef->username]     : null,
                     'dispatched_by' => $o->dispatchedByRef? ['id'=>$o->dispatchedByRef->id,'name'=>$o->dispatchedByRef->name,'username'=>$o->dispatchedByRef->username] : null,
