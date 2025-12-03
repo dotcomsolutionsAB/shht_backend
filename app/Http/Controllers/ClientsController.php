@@ -17,69 +17,198 @@ use Illuminate\Http\Request;
 class ClientsController extends Controller
 {
     // create
+    // public function create(Request $request)
+    // {
+    //     try {
+    //         // 1️⃣ VALIDATION: same wrapper, exactly ONE contact, no id
+    //         $validated = $request->validate([
+    //             'client'    => ['required', 'integer', 'exists:t_clients,id'],
+    //             'contacts'  => ['required', 'array', 'size:1'],
+
+    //             'contacts.0.name'   => ['required', 'string', 'max:255'],
+    //             'contacts.0.rm'     => ['required', 'integer', 'exists:users,id'],
+    //             'contacts.0.mobile' => ['nullable', 'string', 'max:20'],
+    //             'contacts.0.email'  => ['nullable', 'email', 'max:255'],
+    //         ]);
+
+    //         $clientId    = (int) $validated['client'];
+    //         $contactData = $validated['contacts'][0]; // 🔥 single record only
+
+    //         $name   = $contactData['name'];
+    //         $rm     = $contactData['rm'];
+    //         $mobile = $contactData['mobile'] ?? null;
+    //         $email  = $contactData['email'] ?? null;
+
+    //         // 2️⃣ RM MUST BE STAFF
+    //         $rmUser = User::find($rm);
+    //         if (!$rmUser || $rmUser->role !== 'staff') {
+    //             return response()->json([
+    //                 'code'    => 422,
+    //                 'status'  => false,
+    //                 'message' => "Invalid RM. Selected RM must be a staff user.",
+    //             ], 422);
+    //         }
+
+    //         // 3️⃣ AT LEAST mobile OR email required
+    //         if (empty($mobile) && empty($email)) {
+    //             return response()->json([
+    //                 'code'    => 422,
+    //                 'status'  => false,
+    //                 'message' => "At least mobile or email is required for the contact.",
+    //             ], 422);
+    //         }
+
+    //         // 4️⃣ ALWAYS CREATE NEW CONTACT (no update, no delete)
+    //         $newContact = ClientsContactPersonModel::create([
+    //             'client' => $clientId,
+    //             'name'   => $name,
+    //             'rm'     => $rm,
+    //             'mobile' => $mobile,
+    //             'email'  => $email,
+    //         ]);
+
+    //         // 5️⃣ (Optional) fetch all contacts for this client for UI refresh
+    //         $allContacts = ClientsContactPersonModel::where('client', $clientId)
+    //             ->orderBy('id')
+    //             ->get();
+
+    //         return response()->json([
+    //             'code'    => 200,
+    //             'status'  => true,
+    //             'message' => 'Contact person created successfully!',
+    //             'data'    => [
+    //                 'client'   => $clientId,
+    //                 'contacts' => $allContacts, // keeps same shape as your old response
+    //                 'new'      => $newContact,  // just-created record (handy if you need it)
+    //             ],
+    //         ], 200);
+
+    //     } catch (\Illuminate\Validation\ValidationException $e) {
+    //         return response()->json([
+    //             'code'    => 422,
+    //             'status'  => false,
+    //             'message' => 'Validation error!',
+    //             'errors'  => $e->errors(),
+    //         ], 422);
+    //     } catch (\Throwable $e) {
+    //         Log::error('Create Contact Error', [
+    //             'error' => $e->getMessage(),
+    //             'file'  => $e->getFile(),
+    //             'line'  => $e->getLine(),
+    //         ]);
+
+    //         return response()->json([
+    //             'code'    => 500,
+    //             'status'  => false,
+    //             'message' => 'Something went wrong while creating the contact!',
+    //         ], 500);
+    //     }
+    // }
+
     public function create(Request $request)
     {
         try {
-            // 1️⃣ VALIDATION: same wrapper, exactly ONE contact, no id
-            $validated = $request->validate([
-                'client'    => ['required', 'integer', 'exists:t_clients,id'],
-                'contacts'  => ['required', 'array', 'size:1'],
+            // 1️⃣ Validate main client + nested contact_person
+            $request->validate([
+                'name'          => ['required','string','max:255'],
+                'category'      => ['required','integer','exists:t_category,id'],
+                'sub_category'  => ['required','integer','exists:t_sub_category,id'],
+                'tags'          => ['nullable','string','max:255'],
+                'city'          => ['required','string','max:255'],
+                'state'         => ['required','string','max:255'],
+                'pincode'       => ['required','integer','digits:6'],
 
-                'contacts.0.name'   => ['required', 'string', 'max:255'],
-                'contacts.0.rm'     => ['required', 'integer', 'exists:users,id'],
-                'contacts.0.mobile' => ['nullable', 'string', 'max:20'],
-                'contacts.0.email'  => ['nullable', 'email', 'max:255'],
+                // main RM must be valid staff
+                'rm'            => ['required','integer','exists:users,id'],
+                'sales_person'  => ['required','integer','exists:users,id'],
+
+                // contact_person array
+                'contact_person'             => ['required','array','min:1'],
+                'contact_person.*.name'      => ['required','string','max:255'],
+                'contact_person.*.rm'        => ['required','integer','exists:users,id'],
+                'contact_person.*.mobile'    => ['required','string','max:20'],
+                'contact_person.*.email'     => ['nullable','email','max:255'],
             ]);
 
-            $clientId    = (int) $validated['client'];
-            $contactData = $validated['contacts'][0]; // 🔥 single record only
-
-            $name   = $contactData['name'];
-            $rm     = $contactData['rm'];
-            $mobile = $contactData['mobile'] ?? null;
-            $email  = $contactData['email'] ?? null;
-
-            // 2️⃣ RM MUST BE STAFF
-            $rmUser = User::find($rm);
-            if (!$rmUser || $rmUser->role !== 'staff') {
+            // 2️⃣ Extra validation: main RM must be staff
+            $mainRm = User::find($request->rm);
+            if (!$mainRm || $mainRm->role !== 'staff') {
                 return response()->json([
-                    'code'    => 422,
-                    'status'  => false,
-                    'message' => "Invalid RM. Selected RM must be a staff user.",
+                    'code' => 422,
+                    'status' => false,
+                    'message' => 'Main RM must be a valid staff user.',
                 ], 422);
             }
 
-            // 3️⃣ AT LEAST mobile OR email required
-            if (empty($mobile) && empty($email)) {
-                return response()->json([
-                    'code'    => 422,
-                    'status'  => false,
-                    'message' => "At least mobile or email is required for the contact.",
-                ], 422);
+            // 3️⃣ Extra validation: each contact person RM must be staff
+            foreach ($request->contact_person as $index => $cp) {
+                $rmUser = User::find($cp['rm']);
+                if (!$rmUser || $rmUser->role !== 'staff') {
+                    return response()->json([
+                        'code' => 422,
+                        'status' => false,
+                        'message' => "contact_person[$index].rm must be a valid staff user.",
+                    ], 422);
+                }
             }
 
-            // 4️⃣ ALWAYS CREATE NEW CONTACT (no update, no delete)
-            $newContact = ClientsContactPersonModel::create([
-                'client' => $clientId,
-                'name'   => $name,
-                'rm'     => $rm,
-                'mobile' => $mobile,
-                'email'  => $email,
+            // Extract validated data
+            $clientData = $request->only([
+                'name',
+                'category',
+                'sub_category',
+                'tags',
+                'city',
+                'state',
+                'pincode',
+                'sales_person',
+                'rm',
             ]);
 
-            // 5️⃣ (Optional) fetch all contacts for this client for UI refresh
-            $allContacts = ClientsContactPersonModel::where('client', $clientId)
-                ->orderBy('id')
-                ->get();
+            $contactPersons = $request->contact_person;
 
+            // 4️⃣ Create client + contacts in DB transaction
+            $result = DB::transaction(function () use ($clientData, $contactPersons) {
+
+                // 4.1 Create client record
+                $client = ClientsModel::create([
+                    'name'          => $clientData['name'],
+                    'category'      => (int)$clientData['category'],
+                    'sub_category'  => (int)$clientData['sub_category'],
+                    'tags'          => $clientData['tags'] ?? null,
+                    'city'          => $clientData['city'],
+                    'state'         => $clientData['state'],
+                    'pincode'       => $clientData['pincode'],
+                    'sales_person'  => (int)$clientData['sales_person'],
+                    'rm'            => (int)$clientData['rm'],
+                ]);
+
+                // 4.2 Insert contact persons
+                $createdContacts = [];
+                foreach ($contactPersons as $cp) {
+                    $createdContacts[] = ClientsContactPersonModel::create([
+                        'client'  => $client->id,
+                        'name'    => $cp['name'],
+                        'rm'      => (int)$cp['rm'],     // Valid staff
+                        'mobile'  => $cp['mobile'],
+                        'email'   => $cp['email'] ?? null,
+                    ]);
+                }
+
+                return [
+                    'client'   => $client,
+                    'contacts' => $createdContacts,
+                ];
+            });
+
+            // 5️⃣ Success response
             return response()->json([
                 'code'    => 200,
                 'status'  => true,
-                'message' => 'Contact person created successfully!',
+                'message' => 'Client & contact persons created successfully!',
                 'data'    => [
-                    'client'   => $clientId,
-                    'contacts' => $allContacts, // keeps same shape as your old response
-                    'new'      => $newContact,  // just-created record (handy if you need it)
+                    'client'   => $result['client'],
+                    'contacts' => $result['contacts'],
                 ],
             ], 200);
 
@@ -90,8 +219,9 @@ class ClientsController extends Controller
                 'message' => 'Validation error!',
                 'errors'  => $e->errors(),
             ], 422);
+
         } catch (\Throwable $e) {
-            Log::error('Create Contact Error', [
+            \Log::error('Client creation failed', [
                 'error' => $e->getMessage(),
                 'file'  => $e->getFile(),
                 'line'  => $e->getLine(),
@@ -100,11 +230,10 @@ class ClientsController extends Controller
             return response()->json([
                 'code'    => 500,
                 'status'  => false,
-                'message' => 'Something went wrong while creating the contact!',
+                'message' => 'Something went wrong!',
             ], 500);
         }
     }
-
     // fetch
     public function fetch(Request $request, $id = null)
     {
