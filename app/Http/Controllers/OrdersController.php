@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 use App\Models\OrdersModel;
+use App\Models\CounterModel;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -1244,6 +1245,68 @@ class OrdersController extends Controller
                 'success' => false,
                 'message' => 'Something went wrong while exporting Excel.',
                 'data'    => [],
+            ], 500);
+        }
+    }
+
+    public function getNextSoNumber(Request $request): JsonResponse
+    {
+        try {
+            // Validate the input
+            $validated = $request->validate([
+                'company' => ['required', 'string', 'max:10'],   // SHHT / SHAPL
+            ]);
+
+            $company = strtoupper(trim($validated['company']));
+
+            // Current year → FY postfix
+            $dt  = now();
+            $yy  = (int)$dt->format('y');   // 25
+            $yy2 = $yy + 1;                 // 26
+            $postfix = sprintf('%02d-%02d', $yy, $yy2);
+
+            // Generate SO number atomically
+            $soNo = DB::transaction(function () use ($company, $postfix) {
+
+                // Fetch counter row for this company
+                $row = CounterModel::where('prefix', $company)
+                    ->lockForUpdate()
+                    ->first();
+
+                if (!$row) {
+                    // First record for this company
+                    $row = CounterModel::create([
+                        'prefix'  => $company,
+                        'number'  => 1,
+                        'postfix' => $postfix,
+                    ]);
+                } else {
+                    // If FY changed → update postfix
+                    if ($row->postfix !== $postfix) {
+                        $row->postfix = $postfix;
+                    }
+                    $row->number++;
+                    $row->save();
+                }
+
+                // Build final SO No: SHHT/001/25-26
+                return sprintf('%s/%03d/%s', $row->prefix, $row->number, $row->postfix);
+            });
+
+            return response()->json([
+                'code'    => 200,
+                'success' => true,
+                'message' => 'SO number generated successfully.',
+                'data'    => [ 'so_no' => $soNo ],
+            ], 200);
+
+        } catch (\Throwable $e) {
+            return response()->json([
+                'code'    => 500,
+                'success' => false,
+                'message' => 'Failed to generate SO number.',
+                'data'    => [],
+                'error'   => $e->getMessage(),
             ], 500);
         }
     }

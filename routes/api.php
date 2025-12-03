@@ -95,6 +95,7 @@ Route::middleware('auth:sanctum', 'role:admin,sales,staff,dispatch')->group(func
         Route::get('/get_order_status/{id}', [OrdersController::class, 'validate_order_status']);
         Route::post('/changeStatus', [OrdersController::class, 'updateStatus']);
         Route::post('/export', [OrdersController::class, 'exportExcel']);
+        Route::post('/get_order_id', [OrdersController::class, 'getNextSoNumber']);
     });
 
     // invoice route
