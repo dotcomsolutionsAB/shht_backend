@@ -106,6 +106,3 @@ Route::middleware('auth:sanctum', 'role:admin,sales,staff,dispatch')->group(func
         Route::post('/export', [InvoiceController::class, 'exportExcel']);
     });
 });
-
-
-

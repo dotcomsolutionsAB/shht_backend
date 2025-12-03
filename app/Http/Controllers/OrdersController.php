@@ -50,26 +50,7 @@ class OrdersController extends Controller
                 'drive_link'             => ['nullable','string','max:255'],
             ]);
 
-            // 2) Extra checks: checked_by and dispatched_by MUST be staff
-            $checkedUser = User::find($request->checked_by);
-            if (!$checkedUser || $checkedUser->role !== 'staff') {
-                return response()->json([
-                    'code'    => 422,
-                    'status'  => false,
-                    'message' => 'Checked by user must be a valid staff user.',
-                ], 422);
-            }
-
-            $dispatchedUser = User::find($request->dispatched_by);
-            if (!$dispatchedUser || $dispatchedUser->role !== 'staff') {
-                return response()->json([
-                    'code'    => 422,
-                    'status'  => false,
-                    'message' => 'Dispatched by user must be a valid staff user.',
-                ], 422);
-            }
-
-            // 3) Create inside a DB transaction (includes counter reservation)
+            // 2) Create inside a DB transaction (includes counter reservation)
             $order = DB::transaction(function () use ($request) {
 
                 // Reserve counter / generate so_no via CounterController helper
@@ -77,12 +58,6 @@ class OrdersController extends Controller
 
                 // Determine final status
                 $status = $request->input('status', 'pending');
-
-                // If order is dispatched at creation time, set dispatched_date = today
-                $dispatchedDate = null;
-                if ($status === 'dispatched') {
-                    $dispatchedDate = now()->toDateString(); // store only date (YYYY-MM-DD)
-                }
 
                 // Persist order
                 return OrdersModel::create([
@@ -102,7 +77,6 @@ class OrdersController extends Controller
                     'invoice'               => $request->invoice, // nullable
 
                     'status'                => $status,
-                    'dispatched_date'       => $dispatchedDate,
 
                     'initiated_by'          => (int) $request->initiated_by,
                     'checked_by'            => (int) $request->checked_by,
@@ -112,7 +86,7 @@ class OrdersController extends Controller
                 ]);
             });
 
-            // 4) Success response
+            // 3) Success response
             return response()->json([
                 'code'    => 200,
                 'status'  => true,
@@ -125,7 +99,6 @@ class OrdersController extends Controller
                     'order_no'              => $order->order_no,
                     'order_date'            => $order->order_date,
                     'status'                => $order->status,
-                    'dispatched_date'       => $order->dispatched_date,
                     'client'                => $order->client,
                     'client_contact_person' => $order->client_contact_person,
                     'email'                 => $order->email,
@@ -583,7 +556,6 @@ class OrdersController extends Controller
             ], 500);
         }
     }
-
     
     /* ------------------------------------------------------------------
      | 1.  Allowed next statuses
@@ -661,13 +633,124 @@ class OrdersController extends Controller
     /* ------------------------------------------------------------------
      | 2.  Perform the status change
      * ------------------------------------------------------------------*/
+    // public function updateStatus(Request $request): JsonResponse
+    // {
+    //     $rules = [
+    //         'order_id'          => 'required|string|exists:t_orders,order_no',
+    //         'status'            => 'required|string|in:dispatched,invoiced,completed,partial_pending,out_of_stock,short_closed,cancelled',
+    //         'optional_fields'   => 'nullable|array',
+    //     ];
+    //     $validated = $request->validate($rules);
+
+    //     DB::beginTransaction();
+    //     try {
+    //         $order = OrdersModel::where('order_no', $validated['order_id'])->firstOrFail();
+
+    //         /* ----------------------------------------------------------
+    //          * A.  Is the requested move allowed ?
+    //          * ---------------------------------------------------------- */
+    //         $allowed = $this->getAllowedNextStatuses($order->status);
+    //         if (!in_array($validated['status'], $allowed, true)) {
+    //             return response()->json([
+    //                 'code'    => 422,
+    //                 'status'  => false,
+    //                 'message' => "Invalid transition from {$order->status} to {$validated['status']}.",
+    //             ], 422);
+    //         }
+
+    //         $user = auth()->user(); // via sanctum / passport / whatever you use
+
+    //         /* ----------------------------------------------------------
+    //          * B.  Status-specific checks & data preparation
+    //          * ---------------------------------------------------------- */
+    //         $extra = [];
+
+    //         switch ($validated['status']) {
+    //             case 'dispatched':
+    //                 $dispatchedBy = $validated['optional_fields']['dispatched_by'] ?? null;
+    //                 if (!$dispatchedBy) {
+    //                     throw new \Exception('dispatched_by user id is required.');
+    //                 }
+                    
+    //                 // save who is triggering the dispatch
+    //                 $extra['initiated_by'] = auth()->id();   // <-- from token
+    //                 $extra['dispatched_by'] = $dispatchedBy; // <-- from request
+    //                 //  set dispatched_date to today
+    //                 $extra['dispatched_date'] = now()->toDateString(); // YYYY-MM-DD
+    //                 break;
+
+    //             case 'invoiced':
+    //                 $invNum = $validated['optional_fields']['invoice_number'] ?? null;
+    //                 $invDate = $validated['optional_fields']['invoice_date'] ?? null;
+    //                 if (!$invNum || !$invDate) {
+    //                     throw new \Exception('invoice_number and invoice_date are required for invoicing.');
+    //                 }
+    //                 // who is creating the invoice = bearer token
+    //                 $billedBy = auth()->id();
+
+    //                 // create invoice record
+    //                 $invoice = app(InvoiceController::class)
+    //                             ->makeInvoice([
+    //                                 'order'          => $order->id,
+    //                                 'invoice_number' => $invNum,
+    //                                 'invoice_date'   => $invDate,
+    //                                 'billed_by'      => $user->id,
+    //                             ]);
+
+    //                 $extra['invoice'] = $invoice->id;
+    //                 break;
+    //         }
+
+    //         /* ----------------------------------------------------------
+    //          * C.  Update order
+    //          * ---------------------------------------------------------- */
+    //         $order->status = $validated['status'];
+    //         foreach ($extra as $k => $v) {
+    //             $order->$k = $v;
+    //         }
+    //         $order->save();
+
+    //         DB::commit();
+
+    //         return response()->json([
+    //             'code'    => 200,
+    //             'status'  => true,
+    //             'message' => 'Order status updated successfully.',
+    //             'data'    => [
+    //                 'order_id' => $order->id,
+    //                 'status'   => $order->status,
+    //                 'dispatched_date' => $order->dispatched_date,
+    //             ],
+    //         ], 200);
+    //     } catch (\Throwable $e) {
+    //         DB::rollBack();
+    //         \Log::error('changeStatus failed', [
+    //             'order_id' => $validated['order_id'] ?? 'unknown',
+    //             'payload'  => $request->all(),
+    //             'error'    => $e->getMessage(),
+    //         ]);
+
+    //         return response()->json([
+    //             'code'    => 500,
+    //             'status'  => false,
+    //             'message' => $e->getMessage() ?: 'Status update failed.',
+    //         ], 500);
+    //     }
+    // }
+
     public function updateStatus(Request $request): JsonResponse
     {
         $rules = [
-            'order_id'          => 'required|string|exists:t_orders,order_no',
-            'status'            => 'required|string|in:dispatched,invoiced,completed,partial_pending,out_of_stock,short_closed,cancelled',
-            'optional_fields'   => 'nullable|array',
+            'order_id'        => 'required|string|exists:t_orders,order_no',
+            'status'          => 'required|string|in:dispatched,invoiced,completed,partial_pending,out_of_stock,short_closed,cancelled',
+            'optional_fields' => 'nullable|array',
+
+            // if you want to enforce dispatched_by presence & validity when used:
+            'optional_fields.dispatched_by'   => 'nullable|integer|exists:users,id',
+            // if later you also support checked_by via this endpoint:
+            // 'optional_fields.checked_by'   => 'nullable|integer|exists:users,id',
         ];
+
         $validated = $request->validate($rules);
 
         DB::beginTransaction();
@@ -675,8 +758,8 @@ class OrdersController extends Controller
             $order = OrdersModel::where('order_no', $validated['order_id'])->firstOrFail();
 
             /* ----------------------------------------------------------
-             * A.  Is the requested move allowed ?
-             * ---------------------------------------------------------- */
+            * A.  Is the requested move allowed ?
+            * ---------------------------------------------------------- */
             $allowed = $this->getAllowedNextStatuses($order->status);
             if (!in_array($validated['status'], $allowed, true)) {
                 return response()->json([
@@ -686,52 +769,68 @@ class OrdersController extends Controller
                 ], 422);
             }
 
-            $user = auth()->user(); // via sanctum / passport / whatever you use
-
-            /* ----------------------------------------------------------
-             * B.  Status-specific checks & data preparation
-             * ---------------------------------------------------------- */
+            $user  = auth()->user(); // via sanctum / passport / whatever you use
             $extra = [];
 
+            /* ----------------------------------------------------------
+            * B.  Status-specific checks & data preparation
+            * ---------------------------------------------------------- */
             switch ($validated['status']) {
                 case 'dispatched':
                     $dispatchedBy = $validated['optional_fields']['dispatched_by'] ?? null;
                     if (!$dispatchedBy) {
                         throw new \Exception('dispatched_by user id is required.');
                     }
-                    
-                    // save who is triggering the dispatch
-                    $extra['initiated_by'] = auth()->id();   // <-- from token
-                    $extra['dispatched_by'] = $dispatchedBy; // <-- from request
-                    //  set dispatched_date to today
+
+                    // 🔥 ensure dispatched_by is staff
+                    $dispatchedUser = User::find($dispatchedBy);
+                    if (!$dispatchedUser || $dispatchedUser->role !== 'staff') {
+                        throw new \Exception('dispatched_by user must be a valid staff user.');
+                    }
+
+                    // (optional) if you also want checked_by here:
+                    /*
+                    $checkedBy = $validated['optional_fields']['checked_by'] ?? null;
+                    if ($checkedBy) {
+                        $checkedUser = User::find($checkedBy);
+                        if (!$checkedUser || $checkedUser->role !== 'staff') {
+                            throw new \Exception('checked_by user must be a valid staff user.');
+                        }
+                        $extra['checked_by'] = $checkedBy;
+                    }
+                    */
+
+                    // who is triggering the dispatch (from token)
+                    $extra['initiated_by']    = $user->id;
+                    // who is marked as dispatching (from request)
+                    $extra['dispatched_by']   = $dispatchedBy;
+                    // 🔥 set dispatched_date to today
                     $extra['dispatched_date'] = now()->toDateString(); // YYYY-MM-DD
                     break;
 
                 case 'invoiced':
-                    $invNum = $validated['optional_fields']['invoice_number'] ?? null;
+                    $invNum  = $validated['optional_fields']['invoice_number'] ?? null;
                     $invDate = $validated['optional_fields']['invoice_date'] ?? null;
                     if (!$invNum || !$invDate) {
                         throw new \Exception('invoice_number and invoice_date are required for invoicing.');
                     }
-                    // who is creating the invoice = bearer token
-                    $billedBy = auth()->id();
 
-                    // create invoice record
+                    // who is creating the invoice = bearer token
                     $invoice = app(InvoiceController::class)
-                                ->makeInvoice([
-                                    'order'          => $order->id,
-                                    'invoice_number' => $invNum,
-                                    'invoice_date'   => $invDate,
-                                    'billed_by'      => $user->id,
-                                ]);
+                        ->makeInvoice([
+                            'order'          => $order->id,
+                            'invoice_number' => $invNum,
+                            'invoice_date'   => $invDate,
+                            'billed_by'      => $user->id,
+                        ]);
 
                     $extra['invoice'] = $invoice->id;
                     break;
             }
 
             /* ----------------------------------------------------------
-             * C.  Update order
-             * ---------------------------------------------------------- */
+            * C.  Update order
+            * ---------------------------------------------------------- */
             $order->status = $validated['status'];
             foreach ($extra as $k => $v) {
                 $order->$k = $v;
@@ -745,8 +844,8 @@ class OrdersController extends Controller
                 'status'  => true,
                 'message' => 'Order status updated successfully.',
                 'data'    => [
-                    'order_id' => $order->id,
-                    'status'   => $order->status,
+                    'order_id'        => $order->id,
+                    'status'          => $order->status,
                     'dispatched_date' => $order->dispatched_date,
                 ],
             ], 200);
