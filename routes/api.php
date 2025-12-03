@@ -12,6 +12,7 @@ use App\Http\Controllers\ClientsController;
 use App\Http\Controllers\ClientContactPersonController;
 use App\Http\Controllers\OrdersController;
 use App\Http\Controllers\InvoiceController;
+use App\Http\Controllers\ChatBotSController;
 
 // Route::get('/user', function (Request $request) {
 //     return $request->user();
@@ -105,5 +106,14 @@ Route::middleware('auth:sanctum', 'role:admin,sales,staff,dispatch')->group(func
         Route::post('/update/{id}', [InvoiceController::class, 'edit']);
         Route::delete('/delete/{id}', [InvoiceController::class, 'delete']);
         Route::post('/export', [InvoiceController::class, 'exportExcel']);
+    });
+
+    // chatbots route
+    Route::prefix('chatbot')->group(function () {
+        Route::post('/get_orders', [ChatBotSController::class, 'create']);
+        Route::post('/retrieve/{id?}', [ChatBotSController::class, 'fetch']);
+        Route::post('/update/{id}', [ChatBotSController::class, 'edit']);
+        Route::delete('/delete/{id}', [ChatBotSController::class, 'delete']);
+        Route::post('/export', [ChatBotSController::class, 'exportExcel']);
     });
 });
