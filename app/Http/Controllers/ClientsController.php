@@ -146,6 +146,7 @@ class ClientsController extends Controller
             ], 500);
         }
     }
+    
     // fetch
     public function fetch(Request $request, $id = null)
     {
