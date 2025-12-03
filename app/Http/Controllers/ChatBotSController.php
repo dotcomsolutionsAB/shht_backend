@@ -11,83 +11,81 @@ class ChatBotSController extends Controller
     //
     public function getClientOrders(Request $request): JsonResponse
     {
-        // 1) Validate input
+        // 1) Validate inputs
         $validator = Validator::make($request->all(), [
-            'client' => ['required', 'string', 'max:255'],
+            'client' => ['nullable', 'string', 'max:255'],
             'page'   => ['nullable', 'integer', 'min:1'],
         ]);
 
         if ($validator->fails()) {
             return response()->json([
-                'status' => 422,
-                'page'   => 1,
-                'has_more' => false,
-                'content'  => '',
-                'json'     => [""],
-                'errors'   => $validator->errors(),
+                'status'  => 422,
+                'message' => 'Validation failed.',
+                'errors'  => $validator->errors(),
             ], 422);
         }
 
-        $data      = $validator->validated();
-        $clientStr = trim($data['client']);
-        $page      = isset($data['page']) ? (int)$data['page'] : 1;
-        if ($page < 1) {
-            $page = 1;
-        }
+        $clientStr = trim((string) $request->input('client', ''));  // search by client name (LIKE)
+        $page      = (int) ($request->input('page', 1) ?: 1);       // default page = 1
+        $perPage   = 5;
 
-        $perPage = 5;
-        $offset  = ($page - 1) * $perPage;
+        // 2) Build query using clientRef relation
+        $query = OrdersModel::with('clientRef');
 
-        // 2) Build query: filter by client name (assuming relation `client` with `name` column)
-        $query = OrdersModel::with('client')   // make sure you have relation client() on OrdersModel
-            ->whereHas('client', function ($q) use ($clientStr) {
+        if ($clientStr !== '') {
+            $query->whereHas('clientRef', function ($q) use ($clientStr) {
                 $q->where('name', 'like', '%' . $clientStr . '%');
             });
+        }
 
-        // total count (for has_more)
+        // 3) Total count for pagination
         $total = $query->count();
 
-        // 3) Fetch page of results
+        // 4) Fetch paginated records (newest first; adjust orderBy as per your need)
+        $offset = ($page - 1) * $perPage;
+
         $orders = $query
-            ->orderBy('order_date', 'desc')   // or so_date if you prefer
+            ->orderBy('so_date', 'desc')   // or 'id' / 'order_date' depending on your business rule
             ->skip($offset)
             ->take($perPage)
             ->get();
 
-        // 4) Build `content` string & `json` array
+        // 5) Build content string + json array
         $lines = [];
         $json  = [""];
-        $snStart = $offset + 1;
+        $sn    = 1;
 
-        foreach ($orders as $index => $order) {
-            $sn          = $snStart + $index;
-            $clientName  = $order->client->name ?? '';
-            // adjust these field names to your actual columns
-            $orderNo     = $order->so_no ?? $order->order_no ?? '';
-            $orderDate   = $order->order_date
-                ? \Carbon\Carbon::parse($order->order_date)->format('d-m-Y')
+        foreach ($orders as $order) {
+            $clientName = $order->clientRef->name ?? '';
+
+            // Use so_no + so_date as per your example
+            $soNo = $order->so_no ?? '';
+            $date = $order->so_date
+                ? \Carbon\Carbon::parse($order->so_date)->format('d-m-Y')
                 : '';
-            $orderValue  = $order->total ?? $order->order_value ?? '0.00';
 
-            $lines[] = sprintf(
-                'SN: %d Client: %s Order No: %s Order Date: %s Order Value: %0.2f',
+            // Adjust this to your actual amount column (e.g. total, order_value, grand_total)
+            $orderValue = $order->order_value ?? 0;   // <-- change if needed
+
+            $line = sprintf(
+                'SN: %d Client: %s Order No: %s Order Date: %s Order Value: %.2f',
                 $sn,
                 $clientName,
-                $orderNo,
-                $orderDate,
+                $soNo,
+                $date,
                 $orderValue
             );
 
-            if ($orderNo !== '') {
-                $json[] = $orderNo;
-            }
+            $lines[] = $line;
+            $json[]  = $soNo;
+
+            $sn++;
         }
 
-        // double-space separated content
+        // If multiple records → join with *two* spaces
         $content = implode('  ', $lines);
 
-        // 5) has_more logic
-        $hasMore = $total > ($offset + $orders->count());
+        $hasMore = $total > ($page * $perPage);
 
         return response()->json([
             'status'   => 200,
