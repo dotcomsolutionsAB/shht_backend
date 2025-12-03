@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Validator;
 use App\Models\OrdersModel;
+use App\Models\User;
 use Illuminate\Http\Request;
 
 class ChatBotSController extends Controller
@@ -93,6 +94,42 @@ class ChatBotSController extends Controller
             'has_more' => $hasMore,
             'content'  => $content,
             'json'     => $json,
+        ], 200);
+    }
+
+    public function checkMobile(Request $request): JsonResponse
+    {
+        // 1) Validate input: required, exactly 12 digits
+        $validator = Validator::make($request->all(), [
+            'mobile' => ['required', 'digits:12'], // 12 digits, no +
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status'  => 422,
+                'message' => 'Validation failed.',
+                'errors'  => $validator->errors(),
+            ], 422);
+        }
+
+        $mobile = $request->input('mobile');
+
+        // 2) Look up in users table
+        // Change 'mobile' to your actual column if different (e.g. 'phone')
+        $user = User::where('mobile', $mobile)->first();
+
+        if (! $user) {
+            return response()->json([
+                'status' => 200,
+                'exists' => false,
+                'role'   => null,
+            ], 200);
+        }
+
+        return response()->json([
+            'status' => 200,
+            'exists' => true,
+            'role'   => $user->role ?? null,  // assumes 'role' column on users table
         ], 200);
     }
 }
