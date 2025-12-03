@@ -192,7 +192,11 @@ class CounterController extends Controller
         $now = now();
         $yy  = (int) $now->format('y');          // e.g. 25 for 2025
         $yy2 = $yy + 1;                          // e.g. 26 for next year
-        $postfix = sprintf('%02d/%02d', $yy, $yy2);
+
+        // $postfix = sprintf('%02d/%02d', $yy, $yy2);
+
+        // 🔴 CHANGED: use "-" instead of "/"
+        $postfix = sprintf('%02d-%02d', $yy, $yy2);  // "25-26"
 
         return DB::transaction(function () use ($prefix, $postfix) {
             $row = CounterModel::where('prefix', $prefix)->lockForUpdate()->first();
@@ -213,7 +217,12 @@ class CounterController extends Controller
                 $row->save();
             }
 
-            $soNo = sprintf('%s-%04d-%s', $row->prefix, $row->number, $row->postfix);
+            // $soNo = sprintf('%s-%04d-%s', $row->prefix, $row->number, $row->postfix);
+
+            // 🔴 CHANGED: use "/" between parts, and postfix already in "25-26" form
+            $soNo = sprintf('%s/%04d/%s', $row->prefix, $row->number, $row->postfix);
+            // example: SHAPL/0001/25-26
+
             return [
                 'number'  => (int) $row->number,
                 'prefix'  => $row->prefix,
