@@ -97,11 +97,11 @@ class ChatBotSController extends Controller
         ], 200);
     }
 
-    public function checkMobile(Request $request): JsonResponse
+    public function checkMobile(Request $request)
     {
-        // 1) Validate input: required, exactly 12 digits
+        // 1) Validate 12 digits
         $validator = Validator::make($request->all(), [
-            'mobile' => ['required', 'digits:12'], // 12 digits, no +
+            'mobile' => ['required', 'digits:12'],
         ]);
 
         if ($validator->fails()) {
@@ -112,12 +112,25 @@ class ChatBotSController extends Controller
             ], 422);
         }
 
-        $mobile = $request->input('mobile');
+        $mobile12 = $request->input('mobile');           // e.g. 911234567890
+        $mobile10 = substr($mobile12, -10);              // e.g. 1234567890
 
-        // 2) Look up in users table
-        // Change 'mobile' to your actual column if different (e.g. 'phone')
-        $user = User::where('mobile', $mobile)->first();
+        // Possible DB formats:
+        $patterns = [
+            $mobile12,                   // 911234567890
+            "+$mobile12",                // +911234567890
+            $mobile10,                   // 1234567890
+            "+91$mobile10",              // +911234567890 (if stored differently)
+        ];
 
+        // 2) Query using LIKE for all patterns
+        $user = User::where(function ($q) use ($patterns) {
+            foreach ($patterns as $p) {
+                $q->orWhere('mobile', 'like', '%' . $p . '%');
+            }
+        })->first();
+
+        // 3) If not found
         if (! $user) {
             return response()->json([
                 'status' => 200,
@@ -126,10 +139,11 @@ class ChatBotSController extends Controller
             ], 200);
         }
 
+        // 4) If found
         return response()->json([
             'status' => 200,
             'exists' => true,
-            'role'   => $user->role ?? null,  // assumes 'role' column on users table
+            'role'   => $user->role ?? null,
         ], 200);
     }
 }
