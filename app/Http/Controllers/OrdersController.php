@@ -39,14 +39,14 @@ class OrdersController extends Controller
 
                 'invoice'                => ['nullable','integer','exists:t_invoice,id'],
 
-                'status'                 => ['nullable', Rule::in([
-                    'pending','dispatched','partial_pending','invoiced',
-                    'completed','short_closed','cancelled','out_of_stock'
-                ])],
+                // 'status'                 => ['nullable', Rule::in([
+                //     'pending','dispatched','partial_pending','invoiced',
+                //     'completed','short_closed','cancelled','out_of_stock'
+                // ])],
 
-                'initiated_by'           => ['required','integer','exists:users,id'],
+                // 'initiated_by'           => ['required','integer','exists:users,id'],
                 'checked_by'             => ['required','integer','exists:users,id'],
-                'dispatched_by'          => ['required','integer','exists:users,id'],
+                // 'dispatched_by'          => ['required','integer','exists:users,id'],
 
                 'drive_link'             => ['nullable','string','max:255'],
             ]);
@@ -79,9 +79,9 @@ class OrdersController extends Controller
 
                     'status'                => $status,
 
-                    'initiated_by'          => (int) $request->initiated_by,
+                    'initiated_by'          => auth()->id(),
                     'checked_by'            => (int) $request->checked_by,
-                    'dispatched_by'         => (int) $request->dispatched_by,
+                    // 'dispatched_by'         => (int) $request->dispatched_by,
 
                     'drive_link'            => $request->drive_link,
                 ]);
