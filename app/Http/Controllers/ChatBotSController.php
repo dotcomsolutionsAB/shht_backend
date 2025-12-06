@@ -178,29 +178,15 @@ class ChatBotSController extends Controller
 
     public function getOrdersByMobile(Request $request): JsonResponse
     {
-        // 1) Validate inputs
-        $validator = Validator::make($request->all(), [
-            // 12-digit numeric, no +
-            'mobile' => ['required', 'regex:/^\d{12}$/'],
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'status'  => 422,
-                'message' => 'Validation failed.',
-                'errors'  => $validator->errors(),
-            ], 422);
-        }
-
         $mobile = $request->input('mobile');
 
-        // 2) Build query: match mobile using LIKE to handle +91 prefix in DB
+        // 1) Build query: match mobile using LIKE to handle +91 prefix in DB
         $orders = OrdersModel::with('clientRef')
             ->where('mobile', 'like', '%' . $mobile . '%')
             ->orderBy('so_date', 'desc')    // or 'id' / 'order_date'
             ->get();
 
-        // 3) If no orders found
+        // 2) If no orders found
         if ($orders->isEmpty()) {
             return response()->json([
                 'status'  => 404,
@@ -208,7 +194,7 @@ class ChatBotSController extends Controller
             ], 404);
         }
 
-        // 4) Build content string + json array (same style as previous API)
+        // 3) Build content string + json array (same style as previous API)
         $lines = [];
         $json  = [""];
         $sn    = 1;
