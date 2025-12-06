@@ -112,8 +112,8 @@ Route::middleware('auth:sanctum', 'role:admin,sales,staff,dispatch')->group(func
     Route::prefix('chatbot')->group(function () {
         Route::post('/get_orders', [ChatBotSController::class, 'getClientOrders']);
         Route::post('/verify_user', [ChatBotSController::class, 'checkMobile']);
-        Route::post('/dispatch_users', [ChatBotSController::class, 'getDispatchUsers']);
-        Route::delete('/delete/{id}', [ChatBotSController::class, 'delete']);
+        Route::get('/dispatch_users', [ChatBotSController::class, 'getDispatchUsers']);
+        // Route::delete('/delete/{id}', [ChatBotSController::class, 'delete']);
         // Route::post('/export', [ChatBotSController::class, 'exportExcel']);
     });
 });
