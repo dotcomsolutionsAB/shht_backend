@@ -5,6 +5,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Validator;
 use App\Models\OrdersModel;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 
 class ChatBotSController extends Controller
@@ -172,6 +173,81 @@ class ChatBotSController extends Controller
             'status'  => 200,
             'content' => $content,   // e.g. "1. Shabaz 2. Tapas ..."
             'json'    => $json,      // ["", "Shabaz", "Tapas", ...]
+        ], 200);
+    }
+
+    public function getOrdersByMobile(Request $request): JsonResponse
+    {
+        // 1) Validate inputs
+        $validator = Validator::make($request->all(), [
+            // 12-digit numeric, no +
+            'mobile' => ['required', 'regex:/^\d{12}$/'],
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status'  => 422,
+                'message' => 'Validation failed.',
+                'errors'  => $validator->errors(),
+            ], 422);
+        }
+
+        $mobile = $request->input('mobile');
+
+        // 2) Build query: match mobile using LIKE to handle +91 prefix in DB
+        $orders = OrdersModel::with('clientRef')
+            ->where('mobile', 'like', '%' . $mobile . '%')
+            ->orderBy('so_date', 'desc')    // or 'id' / 'order_date'
+            ->get();
+
+        // 3) If no orders found
+        if ($orders->isEmpty()) {
+            return response()->json([
+                'status'  => 404,
+                'message' => "No orders found for mobile {$mobile}",
+            ], 404);
+        }
+
+        // 4) Build content string + json array (same style as previous API)
+        $lines = [];
+        $json  = [""];
+        $sn    = 1;
+
+        foreach ($orders as $order) {
+            $clientName = $order->clientRef->name ?? '';
+
+            $soNo = $order->so_no ?? '';
+
+            $date = $order->so_date
+                ? Carbon::parse($order->so_date)->format('d-m-Y')
+                : '';
+
+            // 👉 Change this to your actual amount column
+            // e.g. $order->total, $order->grand_total, etc.
+            $orderValue = $order->order_value ?? 0;
+
+            $line = sprintf(
+                'SN: %d Client: %s Order No: %s Order Date: %s Order Value: %.2f',
+                $sn,
+                $clientName,
+                $soNo,
+                $date,
+                $orderValue
+            );
+
+            $lines[] = $line;
+            $json[]  = $soNo;
+
+            $sn++;
+        }
+
+        // Join multiple lines with two spaces
+        $content = implode('  ', $lines);
+
+        return response()->json([
+            'status'   => 200,
+            'content'  => $content,
+            'json'     => $json,
         ], 200);
     }
 }
