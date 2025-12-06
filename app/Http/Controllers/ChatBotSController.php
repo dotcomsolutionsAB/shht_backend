@@ -146,4 +146,32 @@ class ChatBotSController extends Controller
             'role'   => $user->role ?? null,
         ], 200);
     }
+
+    public function getDispatchUsers(): JsonResponse
+    {
+        // Fetch all users with role = 'dispatch'
+        $dispatchUsers = User::where('role', 'dispatch')
+            ->orderBy('name', 'asc') // or 'id' if you prefer
+            ->get();
+
+        // Build content string and JSON array
+        $lines = [];
+        $json  = [""];  // first element always blank as per your spec
+        $sn    = 1;
+
+        foreach ($dispatchUsers as $user) {
+            $lines[] = sprintf('%d. %s', $sn, $user->name);
+            $json[]  = $user->name;
+            $sn++;
+        }
+
+        // If multiple records → join with single space between entries
+        $content = implode(' ', $lines);
+
+        return response()->json([
+            'status'  => 200,
+            'content' => $content,   // e.g. "1. Shabaz 2. Tapas ..."
+            'json'    => $json,      // ["", "Shabaz", "Tapas", ...]
+        ], 200);
+    }
 }
