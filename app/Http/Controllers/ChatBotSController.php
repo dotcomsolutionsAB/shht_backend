@@ -73,7 +73,7 @@ class ChatBotSController extends Controller
 
         // 5) Build content string + json array
         $lines = [];
-        $json  = [];   // 👈 start as empty array, not [""]
+        $json  = [""];   // 👈 start as empty array, not [""]
 
         $sn    = 1;
 
