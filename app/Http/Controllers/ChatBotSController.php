@@ -333,9 +333,9 @@ Order Value: %.2f
         // 1) Validate input data
         $validator = Validator::make($request->all(), [
             'order_no'    => 'required|string|exists:t_orders,order_no',  // Ensure order_no exists
-            'dispatched_by' => 'required|integer|exists:t_users,id',       // Ensure dispatched_by is a valid user ID
+            'dispatched_by' => 'required|integer|exists:users,id|role:dispatch',       // Ensure dispatched_by is a valid user with dispatch role
             'status'       => 'required|in:pending,dispatched,partial_pending,invoiced,completed,short_closed,cancelled,out_of_stock', // Status validation
-            'folder_link'  => 'required|string|max:255',
+            'folder_link'  => 'required|url|max:255', // Ensure folder_link is a valid URL
         ]);
 
         if ($validator->fails()) {
