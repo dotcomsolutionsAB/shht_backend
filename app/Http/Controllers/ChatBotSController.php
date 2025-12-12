@@ -292,7 +292,7 @@ Order Value: %.2f
             'checkedByRef',        // User who checked the order
             'dispatchedByRef',     // User who dispatched the order
             'invoiceRef',          // Invoice details
-        ])->where('so_number', $soNo)
+        ])->where('so_no', $soNo)
         ->first();
 
         if (!$order) {
