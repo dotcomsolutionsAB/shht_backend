@@ -375,7 +375,7 @@ Order Value: %.2f
             $order->update([
                 'dispatched_by' => $dispatchedBy,
                 'status'        => $status,
-                'folder_link'   => $folderLink,
+                'drive_link'   => $folderLink,
             ]);
 
             // 5) Respond with success
