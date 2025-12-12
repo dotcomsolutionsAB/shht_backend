@@ -381,15 +381,15 @@ Order Value: %.2f
             // 5) Respond with success
             return response()->json([
                 'status'  => 200,
-                'message' => 'Order status updated successfully.',
+                'message' => 'Dispatch-user updated successfully.',
                 'data'    => 'success',
             ], 200);
             
         } catch (\Throwable $e) {
-            \Log::error('Failed to update order status', ['exception' => $e]);
+            \Log::error('Failed to update Dispatch-user', ['exception' => $e]);
             return response()->json([
                 'status'  => 500,
-                'message' => 'Failed to update order status.',
+                'message' => 'Failed to update dispatch-user.',
                 'error'   => $e->getMessage(),
             ], 500);
         }
