@@ -27,7 +27,7 @@ Route::prefix('chatbot')->group(function () {
     Route::post('/get_orders', [ChatBotSController::class, 'getClientOrders']);
     Route::post('/verify_user', [ChatBotSController::class, 'checkMobile']);
     Route::get('/dispatch_users', [ChatBotSController::class, 'getDispatchUsers']);
-    Route::post('/get_orders', [ChatBotSController::class, 'getOrdersByMobile']);
+    Route::post('/get_orders_dispatch', [ChatBotSController::class, 'getOrdersByMobile']);
     // Route::post('/export', [ChatBotSController::class, 'exportExcel']);
 });
 
