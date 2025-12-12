@@ -22,6 +22,15 @@ Route::post('/register', [UserController::class, 'create']);
 
 Route::post('/login', [AuthController::class, 'login']);
 
+// chatbots route
+Route::prefix('chatbot')->group(function () {
+    Route::post('/get_orders', [ChatBotSController::class, 'getClientOrders']);
+    Route::post('/verify_user', [ChatBotSController::class, 'checkMobile']);
+    Route::get('/dispatch_users', [ChatBotSController::class, 'getDispatchUsers']);
+    Route::post('/get_orders', [ChatBotSController::class, 'getOrdersByMobile']);
+    // Route::post('/export', [ChatBotSController::class, 'exportExcel']);
+});
+
 Route::middleware('auth:sanctum', 'role:admin,sales,staff,dispatch')->group(function () {
 
     Route::get('/dashboard', [UserController::class, 'summary']);
@@ -106,14 +115,5 @@ Route::middleware('auth:sanctum', 'role:admin,sales,staff,dispatch')->group(func
         Route::post('/update/{id}', [InvoiceController::class, 'edit']);
         Route::delete('/delete/{id}', [InvoiceController::class, 'delete']);
         Route::post('/export', [InvoiceController::class, 'exportExcel']);
-    });
-
-    // chatbots route
-    Route::prefix('chatbot')->group(function () {
-        Route::post('/get_orders', [ChatBotSController::class, 'getClientOrders']);
-        Route::post('/verify_user', [ChatBotSController::class, 'checkMobile']);
-        Route::get('/dispatch_users', [ChatBotSController::class, 'getDispatchUsers']);
-        Route::post('/get_orders', [ChatBotSController::class, 'getOrdersByMobile']);
-        // Route::post('/export', [ChatBotSController::class, 'exportExcel']);
     });
 });
