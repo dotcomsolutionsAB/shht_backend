@@ -382,10 +382,7 @@ Order Value: %.2f
             return response()->json([
                 'status'  => 200,
                 'message' => 'Order status updated successfully.',
-                'data'    => [
-                    'section' => 'order',
-                    'status'  => 200,
-                ],
+                'data'    => 'success',
             ], 200);
             
         } catch (\Throwable $e) {
