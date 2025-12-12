@@ -271,7 +271,7 @@ Order Value: %.2f
     {
         // Validate the input (order_no)
         $validator = Validator::make($request->all(), [
-            'order_no' => ['required', 'string', 'max:255'],
+            'so_number' => 'required|string|exists:t_orders,so_number',
         ]);
 
         if ($validator->fails()) {
@@ -282,17 +282,17 @@ Order Value: %.2f
             ], 422);
         }
 
-        $orderNo = trim($request->input('order_no')); // Order number to search
+        $soNo = trim($request->input('so_number')); // SO-Number to search
 
         // Find the order based on the order_no with all related models
         $order = OrdersModel::with([
             'clientRef',           // Client information
-            'contactRef',          // Client contact person information
+            'contactRef.rmUser',   // Contact person with the related RM user
             'initiatedByRef',      // User who initiated the order
             'checkedByRef',        // User who checked the order
             'dispatchedByRef',     // User who dispatched the order
             'invoiceRef',          // Invoice details
-        ])->where('order_no', $orderNo)
+        ])->where('so_number', $soNo)
         ->first();
 
         if (!$order) {
@@ -320,18 +320,29 @@ Order Value: %.2f
             'client_contact_person' => [
                 'id'   => $contactPerson->id ?? '',
                 'name' => $contactPerson->name ?? '',
+                'rm' => [
+                    'name'  => $contactPerson->rmUser->name ?? '',
+                    'email' => $contactPerson->rmUser->email ?? '',
+                    'mobile' => $contactPerson->rmUser->mobile ?? '',
+                ],
             ],
             'initiated_by' => [
                 'id'   => $initiatedBy->id ?? '',
                 'name' => $initiatedBy->name ?? '',
+                'email' => $initiatedBy->email ?? '',
+                'mobile' => $initiatedBy->mobile ?? '',
             ],
             'checked_by' => [
                 'id'   => $checkedBy->id ?? '',
                 'name' => $checkedBy->name ?? '',
+                'email' => $initiatedBy->email ?? '',
+                'mobile' => $initiatedBy->mobile ?? '',
             ],
             'dispatched_by' => [
                 'id'   => $dispatchedBy->id ?? '',
                 'name' => $dispatchedBy->name ?? '',
+                'email' => $initiatedBy->email ?? '',
+                'mobile' => $initiatedBy->mobile ?? '',
             ],
             'invoice' => $invoice ? $invoice : null, // Whole invoice object
             'so_number' => $order->so_no ?? '',
