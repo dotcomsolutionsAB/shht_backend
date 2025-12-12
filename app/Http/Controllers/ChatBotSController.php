@@ -284,10 +284,16 @@ Order Value: %.2f
 
         $orderNo = trim($request->input('order_no')); // Order number to search
 
-        // Find the order based on the order_no
-        $order = OrdersModel::with('clientRef') // Assuming clientRef is the relationship in the OrdersModel
-            ->where('order_no', $orderNo)
-            ->first();
+        // Find the order based on the order_no with all related models
+        $order = OrdersModel::with([
+            'clientRef',           // Client information
+            'contactRef',          // Client contact person information
+            'initiatedByRef',      // User who initiated the order
+            'checkedByRef',        // User who checked the order
+            'dispatchedByRef',     // User who dispatched the order
+            'invoiceRef',          // Invoice details
+        ])->where('order_no', $orderNo)
+        ->first();
 
         if (!$order) {
             return response()->json([
@@ -299,6 +305,11 @@ Order Value: %.2f
 
         // Get client details
         $client = $order->clientRef;
+        $contactPerson = $order->contactRef;
+        $initiatedBy = $order->initiatedByRef;
+        $checkedBy = $order->checkedByRef;
+        $dispatchedBy = $order->dispatchedByRef;
+        $invoice = $order->invoiceRef;
 
         // Prepare the response data
         $orderDetails = [
@@ -306,6 +317,23 @@ Order Value: %.2f
                 'id'   => $client->id ?? '',
                 'name' => $client->name ?? '',
             ],
+            'client_contact_person' => [
+                'id'   => $contactPerson->id ?? '',
+                'name' => $contactPerson->name ?? '',
+            ],
+            'initiated_by' => [
+                'id'   => $initiatedBy->id ?? '',
+                'name' => $initiatedBy->name ?? '',
+            ],
+            'checked_by' => [
+                'id'   => $checkedBy->id ?? '',
+                'name' => $checkedBy->name ?? '',
+            ],
+            'dispatched_by' => [
+                'id'   => $dispatchedBy->id ?? '',
+                'name' => $dispatchedBy->name ?? '',
+            ],
+            'invoice' => $invoice ? $invoice : null, // Whole invoice object
             'so_number' => $order->so_no ?? '',
             'so_date'   => $order->so_date ? \Carbon\Carbon::parse($order->so_date)->format('d-m-Y') : '',
             'order_no'  => $order->order_no ?? '',
