@@ -330,7 +330,14 @@ Order Value: %.2f
     // update dispatch user
     public function updateOrderStatus(Request $request)
     {
-        // 1) Validate input data
+         // 1) Custom Validation Rule for dispatched_by to check if the user has 'dispatch' role
+        Validator::extend('role_dispatch', function ($attribute, $value, $parameters, $validator) {
+            // Check if the user has the role 'dispatch'
+            $user = User::find($value);
+            return $user && $user->role === 'dispatch';
+        });
+
+        // 2) Validate input data
         $validator = Validator::make($request->all(), [
             'order_no'    => 'required|string|exists:t_orders,order_no',  // Ensure order_no exists
             'dispatched_by' => 'required|integer|exists:users,id|role:dispatch',       // Ensure dispatched_by is a valid user with dispatch role
