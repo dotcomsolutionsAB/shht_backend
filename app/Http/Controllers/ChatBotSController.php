@@ -145,6 +145,7 @@ class ChatBotSController extends Controller
             'status' => 200,
             'exists' => true,
             'role'   => $user->role ?? null,
+            'id'   => $user->id ?? null,
         ], 200);
     }
 
