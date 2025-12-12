@@ -28,7 +28,7 @@ Route::prefix('chatbot')->group(function () {
     Route::post('/verify_user', [ChatBotSController::class, 'checkMobile']);
     Route::get('/dispatch_users', [ChatBotSController::class, 'getDispatchUsers']);
     Route::post('/get_orders_dispatch', [ChatBotSController::class, 'getOrdersByMobile']);
-    // Route::post('/export', [ChatBotSController::class, 'exportExcel']);
+    Route::post('/get_order_details', [ChatBotSController::class, 'getOrderDetails']);
 });
 
 Route::middleware('auth:sanctum', 'role:admin,sales,staff,dispatch')->group(function () {

@@ -264,4 +264,58 @@ Order Value: %.2f
             'json'     => $json,
         ], 200);
     }
+
+    public function getOrderDetails(Request $request): JsonResponse
+    {
+        // Validate the input (order_no)
+        $validator = Validator::make($request->all(), [
+            'order_no' => ['required', 'string', 'max:255'],
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status'  => 422,
+                'message' => 'Validation failed.',
+                'errors'  => $validator->errors(),
+            ], 422);
+        }
+
+        $orderNo = trim($request->input('order_no')); // Order number to search
+
+        // Find the order based on the order_no
+        $order = OrdersModel::with('clientRef') // Assuming clientRef is the relationship in the OrdersModel
+            ->where('order_no', $orderNo)
+            ->first();
+
+        if (!$order) {
+            return response()->json([
+                'status'  => 404,
+                'message' => 'Order not found.',
+                'data'    => [],
+            ], 404);
+        }
+
+        // Get client details
+        $client = $order->clientRef;
+
+        // Prepare the response data
+        $orderDetails = [
+            'client' => [
+                'id'   => $client->id ?? '',
+                'name' => $client->name ?? '',
+            ],
+            'so_number' => $order->so_no ?? '',
+            'so_date'   => $order->so_date ? \Carbon\Carbon::parse($order->so_date)->format('d-m-Y') : '',
+            'order_no'  => $order->order_no ?? '',
+            'order_date'=> $order->order_date ? \Carbon\Carbon::parse($order->order_date)->format('d-m-Y') : '',
+            'status'    => $order->status ?? '',
+            'folder_link' => $order->folder_link ?? '',  // Assuming this field exists in the OrdersModel
+        ];
+
+        return response()->json([
+            'status'  => 200,
+            'message' => 'Order details fetched successfully.',
+            'data'    => $orderDetails,
+        ], 200);
+    }
 }
