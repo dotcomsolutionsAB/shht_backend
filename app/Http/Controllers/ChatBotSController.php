@@ -312,10 +312,16 @@ Order Value: %.2f
             'folder_link' => $order->folder_link ?? '',  // Assuming this field exists in the OrdersModel
         ];
 
+        // Prepare the content and json structure in the desired format
+        $content = "1. " . $client->name;
+        $json = ["", $client->name];  // Start with an empty string, followed by the client name
+
         return response()->json([
             'status'  => 200,
             'message' => 'Order details fetched successfully.',
             'data'    => $orderDetails,
+            'content' => $content,
+            'json'     => $json,
         ], 200);
     }
 }
