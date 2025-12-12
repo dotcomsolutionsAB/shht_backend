@@ -204,6 +204,7 @@ Order Value: %.2f
         ], 200);
     }
 
+    // get order by mobile
     public function getOrdersByMobile(Request $request): JsonResponse
     {
         $mobile = $request->input('mobile');
@@ -265,6 +266,7 @@ Order Value: %.2f
         ], 200);
     }
 
+    // order details
     public function getOrderDetails(Request $request): JsonResponse
     {
         // Validate the input (order_no)
@@ -323,5 +325,69 @@ Order Value: %.2f
             'content' => $content,
             'json'     => $json,
         ], 200);
+    }
+
+    // update dispatch user
+    public function updateOrderStatus(Request $request)
+    {
+        // 1) Validate input data
+        $validator = Validator::make($request->all(), [
+            'order_no'    => 'required|string|exists:t_orders,order_no',  // Ensure order_no exists
+            'dispatched_by' => 'required|integer|exists:t_users,id',       // Ensure dispatched_by is a valid user ID
+            'status'       => 'required|in:pending,dispatched,partial_pending,invoiced,completed,short_closed,cancelled,out_of_stock', // Status validation
+            'folder_link'  => 'required|string|max:255',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status'  => 422,
+                'message' => 'Validation failed.',
+                'errors'  => $validator->errors(),
+            ], 422);
+        }
+
+        // 2) Retrieve validated input values
+        $orderNo       = $request->input('order_no');
+        $dispatchedBy  = $request->input('dispatched_by');
+        $status        = $request->input('status');
+        $folderLink    = $request->input('folder_link');
+
+        // 3) Find the order by order_no
+        $order = OrdersModel::where('order_no', $orderNo)->first();
+
+        if (!$order) {
+            return response()->json([
+                'status'  => 404,
+                'message' => 'Order not found.',
+            ], 404);
+        }
+
+        // 4) Update the order's details
+        try {
+            // Save dispatched_by, status, and folder_link
+            $order->update([
+                'dispatched_by' => $dispatchedBy,
+                'status'        => $status,
+                'folder_link'   => $folderLink,
+            ]);
+
+            // 5) Respond with success
+            return response()->json([
+                'status'  => 200,
+                'message' => 'Order status updated successfully.',
+                'data'    => [
+                    'section' => 'order',
+                    'status'  => 200,
+                ],
+            ], 200);
+            
+        } catch (\Throwable $e) {
+            \Log::error('Failed to update order status', ['exception' => $e]);
+            return response()->json([
+                'status'  => 500,
+                'message' => 'Failed to update order status.',
+                'error'   => $e->getMessage(),
+            ], 500);
+        }
     }
 }
