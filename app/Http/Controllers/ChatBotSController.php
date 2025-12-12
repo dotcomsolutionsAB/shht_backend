@@ -271,7 +271,7 @@ Order Value: %.2f
     {
         // Validate the input (order_no)
         $validator = Validator::make($request->all(), [
-            'so_number' => 'required|string|exists:t_orders,so_number',
+            'so_number' => 'required|string|exists:t_orders,so_no',
         ]);
 
         if ($validator->fails()) {
