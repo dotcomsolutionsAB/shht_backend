@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 use App\Models\OrdersModel;
 use App\Models\CounterModel;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -591,7 +592,7 @@ class OrdersController extends Controller
                 'pending'         => ['dispatched'],
                 'dispatched'      => ['completed', 'partial_pending', 'out_of_stock'],
                 'completed'       => ['cancelled'],
-                'partial_pending' => ['dispatch', 'short_close', 'cancelled'],
+                'partial_pending' => ['dispatch', 'short_closed', 'cancelled'],
                 'out_of_stock'    => ['dispatch', 'cancelled'],
                 'short_closed'    => ['invoiced', 'cancelled'],
 
