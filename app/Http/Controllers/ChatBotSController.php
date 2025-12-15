@@ -372,7 +372,7 @@ Order Value: %.2f
 
         // 2) Validate input data
         $validator = Validator::make($request->all(), [
-            'order_no'    => 'required|string|exists:t_orders,order_no',  // Ensure order_no exists
+            'so_number'    => 'required|string|exists:t_orders,so_no',  // Ensure so_number exists
             'dispatched_by' => 'required|integer|exists:users,id|role_dispatch',       // Ensure dispatched_by is a valid user with dispatch role
             'status'       => 'required|in:pending,dispatched,partial_pending,invoiced,completed,short_closed,cancelled,out_of_stock', // Status validation
             'folder_link'  => 'required|url|max:255', // Ensure folder_link is a valid URL
@@ -387,13 +387,13 @@ Order Value: %.2f
         }
 
         // 2) Retrieve validated input values
-        $orderNo       = $request->input('order_no');
+        $orderNo       = $request->input('so_number');
         $dispatchedBy  = $request->input('dispatched_by');
         $status        = $request->input('status');
         $folderLink    = $request->input('folder_link');
 
-        // 3) Find the order by order_no
-        $order = OrdersModel::where('order_no', $orderNo)->first();
+        // 3) Find the order by so_number
+        $order = OrdersModel::where('so_no', $orderNo)->first();
 
         if (!$order) {
             return response()->json([
