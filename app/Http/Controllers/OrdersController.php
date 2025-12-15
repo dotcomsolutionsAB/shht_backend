@@ -433,6 +433,7 @@ class OrdersController extends Controller
                     'so_date'            => $fresh->so_date,
                     'order_no'           => $fresh->order_no,
                     'order_date'         => $fresh->order_date,
+                    'order_value'        => $fresh->order_value,
                     'status'             => $fresh->status,
                     'drive_link'         => $fresh->drive_link,
                     'client'             => $fresh->clientRef ? ['id'=>$fresh->clientRef->id, 'name'=>$fresh->clientRef->name] : null,
