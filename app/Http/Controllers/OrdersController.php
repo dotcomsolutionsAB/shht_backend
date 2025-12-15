@@ -37,13 +37,14 @@ class OrdersController extends Controller
 
                 'so_date'                => ['required','date'],
                 'order_date'             => ['required','date'],
+                'order_value' => ['required', 'numeric', 'min:0'],
 
                 'invoice'                => ['nullable','integer','exists:t_invoice,id'],
 
-                // 'status'                 => ['nullable', Rule::in([
-                //     'pending','dispatched','partial_pending','invoiced',
-                //     'completed','short_closed','cancelled','out_of_stock'
-                // ])],
+                'status' => ['nullable', Rule::in([
+                    'pending','dispatched','partial_pending','invoiced',
+                    'completed','short_closed','cancelled','out_of_stock'
+                ])],
 
                 // 'initiated_by'           => ['required','integer','exists:users,id'],
                 'checked_by'             => ['required','integer','exists:users,id'],
@@ -75,6 +76,7 @@ class OrdersController extends Controller
 
                     'order_no'              => $request->order_no,
                     'order_date'            => $request->order_date,
+                    'order_value'           => $request->order_value,
 
                     'invoice'               => $request->invoice, // nullable
 
@@ -100,6 +102,7 @@ class OrdersController extends Controller
                     'so_date'               => $order->so_date,
                     'order_no'              => $order->order_no,
                     'order_date'            => $order->order_date,
+                    'order_value'           => $order->order_value,
                     'status'                => $order->status,
                     'client'                => $order->client,
                     'client_contact_person' => $order->client_contact_person,
@@ -155,7 +158,7 @@ class OrdersController extends Controller
                     ->select(
                         'id','company','client','client_contact_person',
                         'email','mobile',
-                        'so_no','so_date','order_no','order_date',
+                        'so_no','so_date','order_no','order_date','order_value',
                         'invoice','status',
                         'initiated_by','checked_by','dispatched_by',
                         'dispatched_date', 'drive_link','created_at','updated_at'
@@ -176,6 +179,7 @@ class OrdersController extends Controller
                     'so_date'   => $o->so_date,
                     'order_no'  => $o->order_no,
                     'order_date'=> $o->order_date,
+                    'order_value'=> $o->order_value,
                     'status'    => $o->status,
                     'dispatched_date' => $o->dispatched_date,
                     'client'    => $o->clientRef
@@ -240,7 +244,7 @@ class OrdersController extends Controller
                 ->select(
                     'id','company','client','client_contact_person',
                     'mobile','email',
-                    'so_no','so_date','order_no','order_date',
+                    'so_no','so_date','order_no','order_date','order_value',
                     'invoice','status',
                     'initiated_by','checked_by','dispatched_by',
                     'dispatched_date','drive_link','created_at','updated_at'
@@ -286,6 +290,7 @@ class OrdersController extends Controller
                     'so_date'   => $o->so_date,
                     'order_no'  => $o->order_no,
                     'order_date'=> $o->order_date,
+                    'order_value'=> $o->order_value,
                     'status'    => $o->status,
                     'dispatched_date'    => $o->dispatched_date,
                     'client'    => $o->clientRef
@@ -367,6 +372,7 @@ class OrdersController extends Controller
                     Rule::unique('t_orders', 'order_no')->ignore($id)
                 ],
                 'order_date'            => ['required', 'date'],
+                'order_value'           => ['required', 'numeric', 'min:0'],
                 'invoice'               => ['nullable', 'integer'],
                 'status'                => ['required', Rule::in([
                     'pending',
@@ -394,6 +400,7 @@ class OrdersController extends Controller
                 'so_date'               => $request->so_date,
                 'order_no'              => $request->order_no,
                 'order_date'            => $request->order_date,
+                'order_value'           => $request->order_value,
                 'invoice'               => $request->invoice,
                 'status'                => $request->status,
                 'initiated_by'          => $request->initiated_by,

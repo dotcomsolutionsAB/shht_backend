@@ -344,6 +344,7 @@ Order Value: %.2f
                 'email' => $initiatedBy->email ?? '',
                 'mobile' => $initiatedBy->mobile ?? '',
             ],
+            'order_value' => $order->order_value ?? '',
             'invoice' => $invoice ? $invoice : null, // Whole invoice object
             'so_number' => $order->so_no ?? '',
             'so_date'   => $order->so_date ? \Carbon\Carbon::parse($order->so_date)->format('d-m-Y') : '',
