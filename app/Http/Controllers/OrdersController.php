@@ -148,7 +148,7 @@ class OrdersController extends Controller
             if ($id !== null) {
                 $o = OrdersModel::with([
                         'clientRef:id,name',
-                        'contactRef:id,client,name,designation,mobile,email',
+                        'contactRef:id,client,name,rm,mobile,email',
                         'initiatedByRef:id,name,username',
                         'checkedByRef:id,name,username',
                         'dispatchedByRef:id,name,username',
