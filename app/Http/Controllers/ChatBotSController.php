@@ -376,7 +376,7 @@ Order Value: %.2f
             'so_number'    => 'required|string|exists:t_orders,so_no',  // Ensure so_number exists
             'dispatched_by' => 'required|integer|exists:users,id|role_dispatch',       // Ensure dispatched_by is a valid user with dispatch role
             'status'       => 'required|in:pending,dispatched,partial_pending,invoiced,completed,short_closed,cancelled,out_of_stock', // Status validation
-            'folder_link'  => 'required|url|max:255', // Ensure folder_link is a valid URL
+            'folder_link'  => 'nullable|url|max:255', // Ensure folder_link is a valid URL
         ]);
 
         if ($validator->fails()) {
