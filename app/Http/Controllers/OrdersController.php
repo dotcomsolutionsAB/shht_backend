@@ -482,7 +482,7 @@ class OrdersController extends Controller
             // 1) Load with related objects for a good snapshot
             $o = OrdersModel::with([
                     'clientRef:id,name',
-                    'contactRef:id,client,name,designation,mobile,email',
+                    'contactRef:id,client,name,rm,mobile,email',
                     'initiatedByRef:id,name,username',
                     'checkedByRef:id,name,username',
                     'dispatchedByRef:id,name,username',
@@ -518,7 +518,7 @@ class OrdersController extends Controller
                     ? [
                         'id' => $o->contactRef->id,
                         'name' => $o->contactRef->name,
-                        'designation' => $o->contactRef->designation,
+                        'designation' => $o->contactRef->rm,
                         'mobile' => $o->contactRef->mobile,
                         'email' => $o->contactRef->email,
                     ] : null,
