@@ -186,11 +186,13 @@ Order Value: %.2f
         // Build content string and JSON array
         $lines = [];
         $json  = [""];  // first element always blank as per your spec
+        $mobile  = [""];  // first element always blank as per your spec
         $sn    = 1;
 
         foreach ($dispatchUsers as $user) {
             $lines[] = sprintf('%d. %s', $sn, $user->name);
             $json[]  = $user->id;
+            $mobile[] = $user->mobile;
             $sn++;
         }
 
