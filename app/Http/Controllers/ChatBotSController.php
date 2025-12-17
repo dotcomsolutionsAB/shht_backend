@@ -190,7 +190,7 @@ Order Value: %.2f
 
         foreach ($dispatchUsers as $user) {
             $lines[] = sprintf('%d. %s', $sn, $user->name);
-            $json[]  = $user->name;
+            $json[]  = $user->id;
             $sn++;
         }
 
