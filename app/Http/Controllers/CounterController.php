@@ -85,6 +85,7 @@ class CounterController extends Controller
                 'status'  => true,
                 'message' => 'Counters fetched successfully.',
                 'count'   => $items->count(),
+                'total'   => $items->count(),
                 'data'    => $items,
             ], 200);
 
