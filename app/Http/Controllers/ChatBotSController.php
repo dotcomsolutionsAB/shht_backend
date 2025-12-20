@@ -181,30 +181,29 @@ Order Value: %.2f
     {
         // Fetch all users with role = 'dispatch'
         $dispatchUsers = User::where('role', 'dispatch')
-            ->orderBy('name', 'asc') // or 'id' if you prefer
+            ->orderBy('name', 'asc')
             ->get();
 
         // Build content string and JSON array
-        $lines = [];
-        $json  = [""];  // first element always blank as per your spec
-        $mobile  = [""];  // first element always blank as per your spec
-        $sn    = 1;
+        $lines  = [];
+        $json   = [""];   // first element always blank as per your spec
+        $mobile = [""];   // first element always blank as per your spec
+        $sn     = 1;
 
         foreach ($dispatchUsers as $user) {
-            $lines[] = sprintf('%d. %s', $sn, $user->name);
-            $json[]  = $user->id;
-            $mobile[] = '+'.$user->mobile;
-
+            $lines[]  = sprintf('%d. %s', $sn, $user->name);
+            $json[]   = $user->id;
+            $mobile[] = '+' . $user->mobile;
             $sn++;
         }
 
-        // If multiple records → join with single space between entries
-        $content = implode(' ', $lines);
+        // 🔹 NEWLINE after every name
+        $content = implode("\n", $lines); // or PHP_EOL
 
         return response()->json([
             'status'  => 200,
-            'content' => $content,   // e.g. "1. Shabaz 2. Tapas ..."
-            'json'    => $json,      // ["", "Shabaz", "Tapas", ...]
+            'content' => $content,
+            'json'    => $json,
         ], 200);
     }
 
