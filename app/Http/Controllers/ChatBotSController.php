@@ -7,7 +7,6 @@ use App\Models\OrdersModel;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
-use App\Models\ClientsModel;
 
 class ChatBotSController extends Controller
 {
@@ -222,7 +221,7 @@ Order Value: %.2f
         }
 
         // 1) Fetch client_id from mobile (handles +91 / spaces etc using LIKE)
-        $client = ClientsModel::where('mobile', 'like', '%' . $mobile . '%')
+        $client = User::where('mobile', 'like', '%' . $mobile . '%')
             ->select('id')
             ->first();
 
