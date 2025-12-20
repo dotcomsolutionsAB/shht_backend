@@ -7,6 +7,7 @@ use App\Models\OrdersModel;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use App\Models\ClientsModel;
 
 class ChatBotSController extends Controller
 {
@@ -208,41 +209,61 @@ Order Value: %.2f
     }
 
     // get order by mobile
+    
+
     public function getOrdersByMobile(Request $request): JsonResponse
     {
-        $mobile = $request->input('mobile');
+        $mobile = trim((string) $request->input('mobile', ''));
 
-        // 1) Build query: match mobile using LIKE to handle +91 prefix in DB
-        $orders = OrdersModel::with('clientRef')
-            ->where('mobile', 'like', '%' . $mobile . '%')
-            ->orderBy('so_date', 'desc')    // or 'id' / 'order_date'
-            ->get();
+        if ($mobile === '') {
+            return response()->json([
+                'status'  => 422,
+                'message' => 'Mobile is required.',
+            ], 422);
+        }
 
-        // 2) If no orders found
-        if ($orders->isEmpty()) {
+        // 1) Fetch client_id from mobile (handles +91 / spaces etc using LIKE)
+        $client = ClientsModel::where('mobile', 'like', '%' . $mobile . '%')
+            ->select('id')
+            ->first();
+
+        if (!$client) {
             return response()->json([
                 'status'  => 404,
-                'message' => "No orders found for mobile {$mobile}",
+                'message' => "No client found for mobile {$mobile}",
             ], 404);
         }
 
-        // 3) Build content string + json array (same style as previous API)
+        $client_id = $client->id;
+
+        // 2) Fetch orders where dispatched_by = this client_id
+        $orders = OrdersModel::with('clientRef')
+            ->where('dispatched_by', $client_id)
+            ->orderBy('so_date', 'desc')
+            ->get();
+
+        // 3) If no orders found
+        if ($orders->isEmpty()) {
+            return response()->json([
+                'status'  => 404,
+                'message' => "No orders found for dispatched_by {$client_id}",
+            ], 404);
+        }
+
+        // 4) Build content string + json array (same style)
         $lines = [];
-        $json  = [""];
+        $json  = [""]; // keep your existing style
         $sn    = 1;
 
         foreach ($orders as $order) {
             $clientName = $order->clientRef->name ?? '';
-
-            $soNo = $order->so_no ?? '';
+            $soNo       = $order->so_no ?? '';
 
             $date = $order->so_date
                 ? Carbon::parse($order->so_date)->format('d-m-Y')
                 : '';
 
-            // 👉 Change this to your actual amount column
-            // e.g. $order->total, $order->grand_total, etc.
-            $orderValue = $order->order_value ?? 0;
+            $orderValue = (float) ($order->order_value ?? 0);
 
             $line = sprintf(
                 'SN: %d Client: %s Order No: %s Order Date: %s Order Value: %.2f',
@@ -255,17 +276,15 @@ Order Value: %.2f
 
             $lines[] = $line;
             $json[]  = $soNo;
-
             $sn++;
         }
 
-        // Join multiple lines with two spaces
         $content = implode('  ', $lines);
 
         return response()->json([
-            'status'   => 200,
-            'content'  => $content,
-            'json'     => $json,
+            'status'  => 200,
+            'content' => $content,
+            'json'    => $json,
         ], 200);
     }
 
