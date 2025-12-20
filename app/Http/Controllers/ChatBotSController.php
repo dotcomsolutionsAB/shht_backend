@@ -206,6 +206,7 @@ Order Value: %.2f
             'content' => $content,
             'json'    => $json,
             'name'    => $name,
+            'mobile'    => $mobile,
         ], 200);
     }
 
