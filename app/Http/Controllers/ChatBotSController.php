@@ -268,7 +268,13 @@ Order Value: %.2f
             $orderValue = (float) ($order->order_value ?? 0);
 
             $line = sprintf(
-                'SN: %d Client: %s Order No: %s Order Date: %s Order Value: %.2f',
+'SN: %d
+Client: %s
+Order No: %s
+Order Date: %s
+Order Value: %.2f
+
+',
                 $sn,
                 $clientName,
                 $soNo,
