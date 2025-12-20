@@ -10,7 +10,6 @@ use Illuminate\Http\Request;
 
 class ChatBotSController extends Controller
 {
-    //
     public function getClientOrders(Request $request): JsonResponse
     {
         // 1) Validate inputs
@@ -43,7 +42,14 @@ class ChatBotSController extends Controller
         }
 
         // 2) Build query using clientRef relation
+        // $query = OrdersModel::with('clientRef')
+        //     ->whereHas('clientRef', function ($q) use ($clientStr) {
+        //         $q->where('name', 'like', '%' . $clientStr . '%');
+        //     });
+
+        // 2) Build query using clientRef relation + status filter
         $query = OrdersModel::with('clientRef')
+            ->whereIn('status', ['pending','partial_pending','completed'])
             ->whereHas('clientRef', function ($q) use ($clientStr) {
                 $q->where('name', 'like', '%' . $clientStr . '%');
             });
@@ -90,13 +96,7 @@ class ChatBotSController extends Controller
             $orderValue = $order->order_value ?? 0;   // <-- change if needed
 
             $line = sprintf(
-'
-SN: %d
-Client: *%s* 
-Order No: %s 
-Order Date: %s
-Order Value: %.2f
-',
+                "SN: %d\nClient: *%s*\nOrder No: %s\nOrder Date: %s\nOrder Value: %.2f",
                 $sn,
                 $clientName,
                 $soNo,
@@ -123,7 +123,6 @@ Order Value: %.2f
             'json'     => $json,
         ], 200);
     }
-
 
     public function checkMobile(Request $request)
     {
@@ -210,9 +209,6 @@ Order Value: %.2f
         ], 200);
     }
 
-    // get order by mobile
-    
-
     public function getOrdersByMobile(Request $request): JsonResponse
     {
         $mobile = trim((string) $request->input('mobile', ''));
@@ -241,6 +237,7 @@ Order Value: %.2f
         // 2) Fetch orders where dispatched_by = this client_id
         $orders = OrdersModel::with('clientRef')
             ->where('dispatched_by', $client_id)
+            ->where('status', 'dispatched')   // 👈 ADD THIS
             ->orderBy('so_date', 'desc')
             ->get();
 
@@ -268,13 +265,7 @@ Order Value: %.2f
             $orderValue = (float) ($order->order_value ?? 0);
 
             $line = sprintf(
-'SN: %d
-Client: %s
-Order No: %s
-Order Date: %s
-Order Value: %.2f
-
-',
+                "SN: %d\nClient: %s\nOrder No: %s\nOrder Date: %s\nOrder Value: %.2f\n\n",
                 $sn,
                 $clientName,
                 $soNo,
@@ -296,7 +287,6 @@ Order Value: %.2f
         ], 200);
     }
 
-    // order details
     public function getOrderDetails(Request $request): JsonResponse
     {
         // Validate the input (order_no)
@@ -391,7 +381,6 @@ Order Value: %.2f
         ], 200);
     }
 
-    // update dispatch user
     public function updateOrderStatus(Request $request)
     {
          // 1) Custom Validation Rule for dispatched_by to check if the user has 'dispatch' role
