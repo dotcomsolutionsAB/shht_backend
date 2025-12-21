@@ -422,37 +422,37 @@ class ChatBotSController extends Controller
         try {
             // 5) Update order
             $order->update([
-                'status'      => $status,
-                'drive_link'  => $folderLink,
+                'status'     => $status,
+                'drive_link' => $folderLink,
             ]);
 
-            // 🔹 Get dispatched_by user's mobile
-            $dispatchMobile = null;
+            // 🔹 Get initiated_by user's mobile
+            $initiatedMobile = null;
 
-            if (!empty($order->dispatched_by)) {
-                $dispatchUser = User::find($order->dispatched_by);
+            if (!empty($order->initiated_by)) {
+                $initiatedUser = User::find($order->initiated_by);
 
-                if ($dispatchUser && !empty($dispatchUser->mobile)) {
-                    $dispatchMobile = '+' . ltrim($dispatchUser->mobile, '+');
+                if ($initiatedUser && !empty($initiatedUser->mobile)) {
+                    $initiatedMobile = '+' . ltrim($initiatedUser->mobile, '+');
                 }
             }
 
             // 6) Success response
             return response()->json([
                 'status'  => 200,
-                'message' => 'Dispatch-user updated successfully.',
+                'message' => 'Order status updated successfully.',
                 'data'    => [
-                    'success'          => true,
-                    'dispatched_mobile'=> $dispatchMobile,
+                    'success'           => true,
+                    'initiated_mobile'  => $initiatedMobile,
                 ],
             ], 200);
 
         } catch (\Throwable $e) {
-            \Log::error('Failed to update Dispatch-user', ['exception' => $e]);
+            \Log::error('Failed to update order status', ['exception' => $e]);
 
             return response()->json([
                 'status'  => 500,
-                'message' => 'Failed to update dispatch-user.',
+                'message' => 'Failed to update order status.',
                 'error'   => $e->getMessage(),
             ], 500);
         }
