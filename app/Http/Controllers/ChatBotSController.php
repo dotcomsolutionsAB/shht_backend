@@ -5,8 +5,11 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Validator;
 use App\Models\OrdersModel;
 use App\Models\User;
+use App\Models\InvoiceModel;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+
 
 class ChatBotSController extends Controller
 {
@@ -453,6 +456,124 @@ class ChatBotSController extends Controller
             return response()->json([
                 'status'  => 500,
                 'message' => 'Failed to update order status.',
+                'error'   => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function markOrderInvoiced(Request $request)
+    {
+        // ✅ Validate
+        $validator = Validator::make($request->all(), [
+            'so_number'     => ['required', 'string', 'exists:t_orders,so_no'],
+            'invoice_no'    => ['required', 'string', 'max:100'],
+            'invoice_date'  => ['required', 'date'],
+            'mobile_number' => ['required', 'string', 'max:25'],
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status'  => 422,
+                'message' => 'Validation failed.',
+                'errors'  => $validator->errors(),
+            ], 422);
+        }
+
+        $soNo        = trim((string) $request->input('so_number'));
+        $invoiceNo   = trim((string) $request->input('invoice_no'));
+        $invoiceDate = $request->input('invoice_date');
+        $mobile      = trim((string) $request->input('mobile_number'));
+
+        // ✅ Find order
+        $order = OrdersModel::where('so_no', $soNo)->first();
+        if (!$order) {
+            return response()->json([
+                'status'  => 404,
+                'message' => 'Order not found.',
+            ], 404);
+        }
+
+        // ✅ Normalize input mobile to last 10 digits (handles +91, 91, spaces, etc.)
+        $inputDigits = preg_replace('/\D+/', '', $mobile);
+        $input10     = substr($inputDigits, -10);
+
+        if (strlen($input10) !== 10) {
+            return response()->json([
+                'status'  => 422,
+                'message' => 'Invalid mobile number. Please provide a valid 10-digit mobile (with or without +91).',
+                'data'    => [],
+            ], 422);
+        }
+
+        // ✅ Find billing user by matching last 10 digits of DB mobile
+        // NOTE: REGEXP_REPLACE requires MySQL 8+. If you are on MySQL 5.7, tell me and I'll give that version.
+        $billingUser = User::whereRaw(
+            "RIGHT(REGEXP_REPLACE(mobile, '[^0-9]', ''), 10) = ?",
+            [$input10]
+        )->first();
+
+        if (!$billingUser) {
+            return response()->json([
+                'status'  => 404,
+                'message' => 'Billing user not found for given mobile number.',
+                'data'    => [],
+            ], 404);
+        }
+
+        try {
+            $result = DB::transaction(function () use ($order, $invoiceNo, $invoiceDate, $billingUser) {
+
+                // ✅ Create invoice
+                $invoice = InvoiceModel::create([
+                    'order'          => $order->id,
+                    'invoice_number' => $invoiceNo,
+                    'invoice_date'   => Carbon::parse($invoiceDate)->format('Y-m-d'),
+                    'billed_by'      => $billingUser->id,
+                ]);
+
+                // ✅ Update order: status + invoice link
+                $order->update([
+                    'status'  => 'invoiced',
+                    'invoice' => $invoice->id,
+                ]);
+
+                // ✅ initiated_by mobile (required in response)
+                $initiatedMobile = null;
+                if (!empty($order->initiated_by)) {
+                    $initiatedUser = User::find($order->initiated_by);
+                    if ($initiatedUser && !empty($initiatedUser->mobile)) {
+                        $digits10 = substr(preg_replace('/\D+/', '', (string) $initiatedUser->mobile), -10);
+                        if (strlen($digits10) === 10) {
+                            $initiatedMobile = '+91' . $digits10; // consistent format
+                        }
+                    }
+                }
+
+                return [
+                    'invoice_id'       => $invoice->id,
+                    'initiated_mobile' => $initiatedMobile,
+                ];
+            });
+
+            return response()->json([
+                'status'  => 200,
+                'message' => 'Order marked as invoiced and invoice created successfully.',
+                'data'    => [
+                    'success'          => true,
+                    'so_number'        => $soNo,
+                    'invoice_id'       => $result['invoice_id'],
+                    'invoice_no'       => $invoiceNo,
+                    'invoice_date'     => Carbon::parse($invoiceDate)->format('Y-m-d'),
+                    'initiated_mobile' => $result['initiated_mobile'], // ✅ required
+                ],
+            ], 200);
+
+        } catch (\Throwable $e) {
+            \Log::error('Failed to mark order invoiced', ['exception' => $e]);
+
+            return response()->json([
+                'status'  => 500,
+                'message' => 'Failed to mark order as invoiced.',
                 'error'   => $e->getMessage(),
             ], 500);
         }
