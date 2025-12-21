@@ -30,6 +30,7 @@ Route::prefix('chatbot')->group(function () {
     Route::post('/get_orders_dispatch', [ChatBotSController::class, 'getOrdersByMobile']);
     Route::post('/get_order_details', [ChatBotSController::class, 'getOrderDetails']);
     Route::post('/set_dispatch_person', [ChatBotSController::class, 'updateOrderStatus']);
+    Route::post('/mark_invoiced', [ChatBotSController::class, 'markOrderInvoiced']);
 });
 
 Route::middleware('auth:sanctum', 'role:admin,sales,staff,dispatch')->group(function () {

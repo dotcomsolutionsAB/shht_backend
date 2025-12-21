@@ -129,9 +129,9 @@ class ChatBotSController extends Controller
 
     public function checkMobile(Request $request)
     {
-        // 1) Validate 12 digits
+        // 1️⃣ Validate basic input (string, not digits:12 anymore)
         $validator = Validator::make($request->all(), [
-            'mobile' => ['required', 'digits:12'],
+            'mobile' => ['required', 'string', 'min:10'],
         ]);
 
         if ($validator->fails()) {
@@ -142,39 +142,41 @@ class ChatBotSController extends Controller
             ], 422);
         }
 
-        $mobile12 = $request->input('mobile');           // e.g. 911234567890
-        $mobile10 = substr($mobile12, -10);              // e.g. 1234567890
+        // 2️⃣ Normalize input mobile → last 10 digits
+        $inputDigits = preg_replace('/\D+/', '', $request->input('mobile'));
+        $mobile10    = substr($inputDigits, -10);
 
-        // Possible DB formats:
-        $patterns = [
-            $mobile12,                   // 911234567890
-            "+$mobile12",                // +911234567890
-            $mobile10,                   // 1234567890
-            "+91$mobile10",              // +911234567890 (if stored differently)
-        ];
+        if (strlen($mobile10) !== 10) {
+            return response()->json([
+                'status'  => 422,
+                'message' => 'Invalid Indian mobile number.',
+                'exists'  => false,
+            ], 422);
+        }
 
-        // 2) Query using LIKE for all patterns
-        $user = User::where(function ($q) use ($patterns) {
-            foreach ($patterns as $p) {
-                $q->orWhere('mobile', 'like', '%' . $p . '%');
-            }
-        })->first();
+        // 3️⃣ Find user by matching last 10 digits of DB mobile
+        // ✅ MySQL 8+ compatible
+        $user = User::whereRaw(
+            "RIGHT(REGEXP_REPLACE(mobile, '[^0-9]', ''), 10) = ?",
+            [$mobile10]
+        )->first();
 
-        // 3) If not found
-        if (! $user) {
+        // 4️⃣ Not found
+        if (!$user) {
             return response()->json([
                 'status' => 200,
                 'exists' => false,
                 'role'   => null,
+                'id'     => null,
             ], 200);
         }
 
-        // 4) If found
+        // 5️⃣ Found
         return response()->json([
             'status' => 200,
             'exists' => true,
             'role'   => $user->role ?? null,
-            'id'   => $user->id ?? null,
+            'id'     => $user->id ?? null,
         ], 200);
     }
 
@@ -223,8 +225,23 @@ class ChatBotSController extends Controller
             ], 422);
         }
 
-        // 1) Fetch client_id from mobile (handles +91 / spaces etc using LIKE)
-        $client = User::where('mobile', 'like', '%' . $mobile . '%')
+        // ✅ Normalize input mobile -> last 10 digits (India)
+        $digits   = preg_replace('/\D+/', '', $mobile);
+        $mobile10 = substr($digits, -10);
+
+        if (strlen($mobile10) !== 10) {
+            return response()->json([
+                'status'  => 422,
+                'message' => 'Invalid Indian mobile number.',
+            ], 422);
+        }
+
+        // 1) Fetch client_id from mobile (India compatible)
+        // NOTE: REGEXP_REPLACE requires MySQL 8+. If you're on MySQL 5.7/MariaDB, tell me.
+        $client = User::whereRaw(
+                "RIGHT(REGEXP_REPLACE(mobile, '[^0-9]', ''), 10) = ?",
+                [$mobile10]
+            )
             ->select('id')
             ->first();
 
@@ -240,7 +257,7 @@ class ChatBotSController extends Controller
         // 2) Fetch orders where dispatched_by = this client_id
         $orders = OrdersModel::with('clientRef')
             ->where('dispatched_by', $client_id)
-            ->where('status', 'dispatched')   // 👈 ADD THIS
+            ->where('status', 'dispatched')
             ->orderBy('so_date', 'desc')
             ->get();
 
