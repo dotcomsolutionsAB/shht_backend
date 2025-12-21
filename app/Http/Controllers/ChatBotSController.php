@@ -393,7 +393,6 @@ class ChatBotSController extends Controller
         // 2) Validate input data
         $validator = Validator::make($request->all(), [
             'so_number'    => 'required|string|exists:t_orders,so_no',  // Ensure so_number exists
-            'dispatched_by' => 'required|integer|exists:users,id|role_dispatch',       // Ensure dispatched_by is a valid user with dispatch role
             'status'       => 'required|in:pending,dispatched,partial_pending,invoiced,completed,short_closed,cancelled,out_of_stock', // Status validation
             'folder_link'  => 'nullable|url|max:255', // Ensure folder_link is a valid URL
         ]);
@@ -408,7 +407,6 @@ class ChatBotSController extends Controller
 
         // 2) Retrieve validated input values
         $orderNo       = $request->input('so_number');
-        $dispatchedBy  = $request->input('dispatched_by');
         $status        = $request->input('status');
         $folderLink    = $request->input('folder_link');
 
@@ -426,7 +424,6 @@ class ChatBotSController extends Controller
         try {
             // Save dispatched_by, status, and folder_link
             $order->update([
-                'dispatched_by' => $dispatchedBy,
                 'status'        => $status,
                 'drive_link'   => $folderLink,
             ]);
