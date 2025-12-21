@@ -383,18 +383,17 @@ class ChatBotSController extends Controller
 
     public function updateOrderStatus(Request $request)
     {
-         // 1) Custom Validation Rule for dispatched_by to check if the user has 'dispatch' role
+        // 1) Custom Validation Rule for dispatched_by to check if the user has 'dispatch' role
         Validator::extend('role_dispatch', function ($attribute, $value, $parameters, $validator) {
-            // Check if the user has the role 'dispatch'
             $user = User::find($value);
             return $user && $user->role === 'dispatch';
         });
 
         // 2) Validate input data
         $validator = Validator::make($request->all(), [
-            'so_number'    => 'required|string|exists:t_orders,so_no',  // Ensure so_number exists
-            'status'       => 'required|in:pending,dispatched,partial_pending,invoiced,completed,short_closed,cancelled,out_of_stock', // Status validation
-            'folder_link'  => 'nullable|url|max:255', // Ensure folder_link is a valid URL
+            'so_number'   => 'required|string|exists:t_orders,so_no',
+            'status'      => 'required|in:pending,dispatched,partial_pending,invoiced,completed,short_closed,cancelled,out_of_stock',
+            'folder_link' => 'nullable|url|max:255',
         ]);
 
         if ($validator->fails()) {
@@ -405,12 +404,12 @@ class ChatBotSController extends Controller
             ], 422);
         }
 
-        // 2) Retrieve validated input values
-        $orderNo       = $request->input('so_number');
-        $status        = $request->input('status');
-        $folderLink    = $request->input('folder_link');
+        // 3) Retrieve inputs
+        $orderNo    = $request->input('so_number');
+        $status     = $request->input('status');
+        $folderLink = $request->input('folder_link');
 
-        // 3) Find the order by so_number
+        // 4) Find the order
         $order = OrdersModel::where('so_no', $orderNo)->first();
 
         if (!$order) {
@@ -420,23 +419,37 @@ class ChatBotSController extends Controller
             ], 404);
         }
 
-        // 4) Update the order's details
         try {
-            // Save dispatched_by, status, and folder_link
+            // 5) Update order
             $order->update([
-                'status'        => $status,
-                'drive_link'   => $folderLink,
+                'status'      => $status,
+                'drive_link'  => $folderLink,
             ]);
 
-            // 5) Respond with success
+            // 🔹 Get dispatched_by user's mobile
+            $dispatchMobile = null;
+
+            if (!empty($order->dispatched_by)) {
+                $dispatchUser = User::find($order->dispatched_by);
+
+                if ($dispatchUser && !empty($dispatchUser->mobile)) {
+                    $dispatchMobile = '+' . ltrim($dispatchUser->mobile, '+');
+                }
+            }
+
+            // 6) Success response
             return response()->json([
                 'status'  => 200,
                 'message' => 'Dispatch-user updated successfully.',
-                'data'    => 'success',
+                'data'    => [
+                    'success'          => true,
+                    'dispatched_mobile'=> $dispatchMobile,
+                ],
             ], 200);
-            
+
         } catch (\Throwable $e) {
             \Log::error('Failed to update Dispatch-user', ['exception' => $e]);
+
             return response()->json([
                 'status'  => 500,
                 'message' => 'Failed to update dispatch-user.',
