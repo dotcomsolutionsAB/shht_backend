@@ -411,9 +411,10 @@ class ChatBotSController extends Controller
 
         // 2) Validate input data
         $validator = Validator::make($request->all(), [
-            'so_number'   => 'required|string|exists:t_orders,so_no',
-            'status'      => 'required|in:pending,dispatched,partial_pending,invoiced,completed,short_closed,cancelled,out_of_stock',
-            'folder_link' => 'nullable|url|max:255',
+            'so_number'        => 'required|string|exists:t_orders,so_no',
+            'status'           => 'required|in:pending,dispatched,partial_pending,invoiced,completed,short_closed,cancelled,out_of_stock',
+            'folder_link'      => 'nullable|url|max:255',
+            'dispatch_remarks' => 'nullable|string|max:2000',
         ]);
 
         if ($validator->fails()) {
@@ -425,9 +426,10 @@ class ChatBotSController extends Controller
         }
 
         // 3) Retrieve inputs
-        $orderNo    = $request->input('so_number');
-        $status     = $request->input('status');
-        $folderLink = $request->input('folder_link');
+        $orderNo          = $request->input('so_number');
+        $status           = $request->input('status');
+        $folderLink       = $request->input('folder_link');
+        $dispatchRemarks  = $request->input('dispatch_remarks');
 
         // 4) Find the order
         $order = OrdersModel::where('so_no', $orderNo)->first();
@@ -440,11 +442,20 @@ class ChatBotSController extends Controller
         }
 
         try {
-            // 5) Update order
-            $order->update([
-                'status'     => $status,
-                'drive_link' => $folderLink,
-            ]);
+            // 5) Prepare update data
+            $updateData = [
+                'status'           => $status,
+                'drive_link'       => $folderLink,
+                'dispatch_remarks' => $dispatchRemarks,
+            ];
+
+            // ✅ Set dispatched_date as current date when status is dispatched
+            if ($status === 'dispatched') {
+                $updateData['dispatched_date'] = Carbon::now()->format('Y-m-d');
+            }
+
+            // 6) Update order
+            $order->update($updateData);
 
             // 🔹 Get initiated_by user's mobile
             $initiatedMobile = null;
@@ -453,17 +464,17 @@ class ChatBotSController extends Controller
                 $initiatedUser = User::find($order->initiated_by);
 
                 if ($initiatedUser && !empty($initiatedUser->mobile)) {
-                    $initiatedMobile = '+' . ltrim($initiatedUser->mobile, '+');
+                    $initiatedMobile = '+' . ltrim((string) $initiatedUser->mobile, '+');
                 }
             }
 
-            // 6) Success response
+            // 7) Success response
             return response()->json([
                 'status'  => 200,
                 'message' => 'Order status updated successfully.',
                 'data'    => [
-                    'success'           => true,
-                    'initiated_mobile'  => $initiatedMobile,
+                    'success'          => true,
+                    'initiated_mobile' => $initiatedMobile,
                 ],
             ], 200);
 
