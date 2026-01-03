@@ -259,6 +259,8 @@ class ClientsController extends Controller
             $rmId        = $request->input('rm');
             $dateFrom    = $request->input('date_from');
             $dateTo      = $request->input('date_to');
+            $cityRaw  = trim((string) $request->input('city', ''));
+            $stateRaw = trim((string) $request->input('state', ''));
 
             $toIntArray = fn ($str) => $str ? array_map('intval', array_filter(explode(',', $str))) : [];
 
@@ -287,6 +289,13 @@ class ClientsController extends Controller
                         $q->orWhereRaw('FIND_IN_SET(?, tags)', [$tid]);
                     }
                 });
+            }
+            if (!empty($cityRaw)) {
+                $q->where('city', 'like', "%{$cityRaw}%");
+            }
+
+            if (!empty($stateRaw)) {
+                $q->where('state', 'like', "%{$stateRaw}%");
             }
             if (!empty($rmId))  $q->where('rm', (int)$rmId);
             if (!empty($dateFrom)) $q->whereDate('created_at', '>=', $dateFrom);
