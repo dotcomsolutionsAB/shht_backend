@@ -177,6 +177,7 @@ SN: %d\nClient: *%s*\nOrder No: %s\nOrder Date: %s\nOrder Value: %.2f\n\n",
             'status' => 200,
             'exists' => true,
             'role'   => $user->role ?? null,
+            'category'   => $user->category ?? null,
             'id'     => $user->id ?? null,
         ], 200);
     }

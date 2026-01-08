@@ -133,7 +133,7 @@ class UserController extends Controller
             $total = User::count();
 
             // Query for filtered data
-            $q = User::select('id','name','email','username','role','mobile','order_views','change_status','email_status','whatsapp_status')
+            $q = User::select('id','name','email','username','role','category','mobile','order_views','change_status','email_status','whatsapp_status')
                 ->orderBy('id','desc');
 
             if ($search !== '') {
