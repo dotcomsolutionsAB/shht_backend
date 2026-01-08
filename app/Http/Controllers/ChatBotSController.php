@@ -99,7 +99,8 @@ class ChatBotSController extends Controller
             $orderValue = $order->order_value ?? 0;   // <-- change if needed
 
             $line = sprintf(
-                "SN: %d\nClient: *%s*\nOrder No: %s\nOrder Date: %s\nOrder Value: %.2f\n\n",
+                "
+SN: %d\nClient: *%s*\nOrder No: %s\nOrder Date: %s\nOrder Value: %.2f\n\n",
                 $sn,
                 $clientName,
                 $soNo,
@@ -414,6 +415,7 @@ class ChatBotSController extends Controller
             'so_number'        => 'required|string|exists:t_orders,so_no',
             'status'           => 'required|in:pending,dispatched,partial_pending,invoiced,completed,short_closed,cancelled,out_of_stock',
             'folder_link'      => 'nullable|url|max:255',
+            'dispatched_by'    => 'required|exists:t_users,id|role_dispatch',
             'dispatch_remarks' => 'nullable|string|max:2000',
         ]);
 
@@ -452,6 +454,7 @@ class ChatBotSController extends Controller
             // ✅ Set dispatched_date as current date when status is dispatched
             if ($status === 'dispatched') {
                 $updateData['dispatched_date'] = Carbon::now()->format('Y-m-d');
+                $updateData['dispatched_by'] = $request->input('dispatched_by');
             }
 
             // 6) Update order
