@@ -415,7 +415,7 @@ SN: %d\nClient: *%s*\nOrder No: %s\nOrder Date: %s\nOrder Value: %.2f\n\n",
             'so_number'        => 'required|string|exists:t_orders,so_no',
             'status'           => 'required|in:pending,dispatched,partial_pending,invoiced,completed,short_closed,cancelled,out_of_stock',
             'folder_link'      => 'nullable|url|max:255',
-            'dispatched_by'    => 'required|exists:t_users,id|role_dispatch',
+            'dispatched_by'    => 'nullable|exists:t_users,id|role_dispatch',
             'dispatch_remarks' => 'nullable|string|max:2000',
         ]);
 
