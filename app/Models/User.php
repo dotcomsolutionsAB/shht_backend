@@ -57,7 +57,7 @@ class User extends Authenticatable
 
     public function dispatchOrders()
     {
-        return $this->hasMany(\App\Models\Order::class, 'dispatch_user_id'); 
+        return $this->hasMany(\App\Models\OrdersModel::class, 'dispatch_user_id'); 
         // change 'dispatch_user_id' if your column name is different
     }
 }
