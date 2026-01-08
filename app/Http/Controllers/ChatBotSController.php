@@ -99,7 +99,7 @@ class ChatBotSController extends Controller
             $orderValue = $order->order_value ?? 0;   // <-- change if needed
 
             $line = sprintf(
-                "SN: %d\nClient: *%s*\nOrder No: %s\nOrder Date: %s\nOrder Value: %.2f",
+                "SN: %d\nClient: *%s*\nOrder No: %s\nOrder Date: %s\nOrder Value: %.2f\n\n",
                 $sn,
                 $clientName,
                 $soNo,
