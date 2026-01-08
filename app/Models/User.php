@@ -54,4 +54,10 @@ class User extends Authenticatable
             'password' => 'hashed',
         ];
     }
+
+    public function dispatchOrders()
+    {
+        return $this->hasMany(\App\Models\Order::class, 'dispatch_user_id'); 
+        // change 'dispatch_user_id' if your column name is different
+    }
 }

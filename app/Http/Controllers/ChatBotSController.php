@@ -183,35 +183,49 @@ SN: %d\nClient: *%s*\nOrder No: %s\nOrder Date: %s\nOrder Value: %.2f\n\n",
 
     public function getDispatchUsers(): JsonResponse
     {
-        // Fetch all users with role = 'dispatch'
+        // Fetch dispatch users + count of "current" assigned orders
         $dispatchUsers = User::where('role', 'dispatch')
+            ->withCount([
+                'dispatchOrders as current_orders_count' => function ($q) {
+                    // ---- DEFINE "current" HERE (edit to match your statuses) ----
+                    $q->whereNotIn('status', ['completed', 'cancelled', 'refunded']);
+                    // If you track delivery_status separately, you can also add:
+                    // $q->whereNotIn('delivery_status', ['completed', 'cancelled']);
+                }
+            ])
             ->orderBy('name', 'asc')
             ->get();
 
-        // Build content string and JSON array
         $lines  = [];
-        $json   = [""];   // first element always blank as per your spec
-        $name   = [""];   // first element always blank as per your spec
-        $mobile = [""];   // first element always blank as per your spec
+        $json   = [""];   // first element always blank
+        $name   = [""];   // first element always blank
+        $mobile = [""];   // first element always blank
+        $count  = [""];   // first element always blank
         $sn     = 1;
 
         foreach ($dispatchUsers as $user) {
-            $lines[]  = sprintf('%d. %s', $sn, $user->name);
+            $c = (int) ($user->current_orders_count ?? 0);
+
+            // ✅ append count after name
+            $lines[]  = sprintf('%d. %s (%d)', $sn, $user->name, $c);
+
             $json[]   = $user->id;
-            $name[]   = $user->name;
+            $name[]   = $user->name;        // keep pure name (or change to "{$user->name} ({$c})" if you want)
             $mobile[] = '+' . $user->mobile;
+            $count[]  = $c;
+
             $sn++;
         }
 
-        // 🔹 NEWLINE after every name
-        $content = implode("\n", $lines); // or PHP_EOL
+        $content = implode("\n", $lines);
 
         return response()->json([
             'status'  => 200,
             'content' => $content,
             'json'    => $json,
             'name'    => $name,
-            'mobile'    => $mobile,
+            'mobile'  => $mobile,
+            'count'   => $count, // extra aligned array (optional but useful)
         ], 200);
     }
 
