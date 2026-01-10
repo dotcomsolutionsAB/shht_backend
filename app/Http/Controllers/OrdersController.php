@@ -54,79 +54,67 @@ class OrdersController extends Controller
             ]);
 
             // 2) Create inside a DB transaction (includes counter reservation)
-        $order = DB::transaction(function () use ($request) {
+            $order = DB::transaction(function () use ($request) {
 
-        $company = strtoupper(trim($request->company));
+            $company = strtoupper(trim($request->company));
 
-        // FY postfix
-        $dt  = now();
-        $yy  = (int)$dt->format('y');
-        $yy2 = $yy + 1;
-        $postfix = sprintf('%02d-%02d', $yy, $yy2);
+            // ✅ Lock counter row
+            $counter = CounterModel::where('prefix', $company)
+                ->lockForUpdate()
+                ->first();
 
-        // ✅ Lock counter row
-        $counter = CounterModel::where('prefix', $company)
-            ->lockForUpdate()
-            ->first();
-
-        if (!$counter) {
-            // first record
-            $counter = CounterModel::create([
-                'prefix'  => $company,
-                'number'  => 1,
-                'postfix' => $postfix,
-            ]);
-        } else {
-            // FY changed
-            if ($counter->postfix !== $postfix) {
-                $counter->postfix = $postfix;
-                $counter->number  = 1; // optional reset for new FY
-                $counter->save();
+            if (!$counter) {
+                // first record (no FY auto postfix)
+                $counter = CounterModel::create([
+                    'prefix'  => $company,
+                    'number'  => 1,
+                    'postfix' => '', // keep blank (or null if your column allows)
+                ]);
             }
-        }
 
-        // ✅ expected SO number (no increment here)
-        $expectedSoNo = sprintf('%s/%03d/%s', $counter->prefix, (int)$counter->number, $counter->postfix);
+            // ✅ Build expected SO number using DB postfix ONLY
+            $postfix = trim((string) $counter->postfix);
 
-        // ✅ verify request so_no matches expected
-        if (trim((string)$request->so_no) !== $expectedSoNo) {
-            throw new \Exception("Invalid so_no. Expected: {$expectedSoNo}");
-        }
+            $expectedSoNo = $postfix !== ''
+                ? sprintf('%s/%03d/%s', $counter->prefix, (int)$counter->number, $postfix)
+                : sprintf('%s/%03d', $counter->prefix, (int)$counter->number);
 
-        // final status
-        $status = $request->input('status', 'pending');
+            // ✅ verify request so_no matches expected
+            if (trim((string)$request->so_no) !== $expectedSoNo) {
+                throw new \Exception("Invalid so_no. Expected: {$expectedSoNo}");
+            }
 
-        // ✅ create order with verified so_no
-        $order = OrdersModel::create([
-            'company'               => $company,
-            'client'                => (int) $request->client,
-            'client_contact_person' => (int) $request->client_contact_person,
+            $status = $request->input('status', 'pending');
 
-            'email'                 => $request->email,
-            'mobile'                => $request->mobile,
+            $order = OrdersModel::create([
+                'company'               => $company,
+                'client'                => (int) $request->client,
+                'client_contact_person' => (int) $request->client_contact_person,
 
-            'so_no'                 => $expectedSoNo,
-            'so_date'               => $request->so_date,
+                'email'                 => $request->email,
+                'mobile'                => $request->mobile,
 
-            'order_no'              => $request->order_no,
-            'order_date'            => $request->order_date,
-            'order_value'           => $request->order_value,
+                'so_no'                 => $expectedSoNo,
+                'so_date'               => $request->so_date,
 
-            'invoice'               => $request->invoice,
-            'status'                => $status,
+                'order_no'              => $request->order_no,
+                'order_date'            => $request->order_date,
+                'order_value'           => $request->order_value,
 
-            'initiated_by'          => auth()->id(),
-            'checked_by'            => (int) $request->checked_by,
-            'drive_link'            => $request->drive_link,
-        ]);
+                'invoice'               => $request->invoice,
+                'status'                => $status,
 
-        // ✅ Increment counter AFTER order created successfully
-        $counter->number = (int)$counter->number + 1;
-        $counter->save();
+                'initiated_by'          => auth()->id(),
+                'checked_by'            => (int) $request->checked_by,
+                'drive_link'            => $request->drive_link,
+            ]);
 
-        return $order;
-    });
+            // ✅ increment AFTER success
+            $counter->number = (int)$counter->number + 1;
+            $counter->save();
 
+            return $order;
+        });
 
             // 3) Success response
             return response()->json([
@@ -1358,6 +1346,53 @@ class OrdersController extends Controller
     //     }
     // }
 
+    // public function getNextSoNumber(Request $request): JsonResponse
+    // {
+    //     try {
+    //         $validated = $request->validate([
+    //             'company' => ['required', 'string', 'max:10'],   // SHHT / SHAPL
+    //         ]);
+
+    //         $company = strtoupper(trim($validated['company']));
+
+    //         // FY postfix
+    //         $dt  = now();
+    //         $yy  = (int)$dt->format('y');
+    //         $yy2 = $yy + 1;
+    //         $postfix = sprintf('%02d-%02d', $yy, $yy2);
+
+    //         // ✅ DO NOT lockForUpdate here, DO NOT increment here
+    //         $row = CounterModel::where('prefix', $company)->first();
+
+    //         // if not found, show first number as 001
+    //         $nextNumber = $row ? (int)$row->number : 1;
+
+    //         // if FY changed, show new postfix
+    //         $usePostfix = $row ? ($row->postfix !== $postfix ? $postfix : $row->postfix) : $postfix;
+
+    //         $soNo = sprintf('%s/%03d/%s', $company, $nextNumber, $usePostfix);
+
+    //         return response()->json([
+    //             'code'    => 200,
+    //             'success' => true,
+    //             'message' => 'SO number fetched successfully.',
+    //             'data'    => [
+    //                 'so_no'   => $soNo,
+    //                 'prefix'  => $company,
+    //                 'number'  => $nextNumber,
+    //                 'postfix' => $usePostfix,
+    //             ],
+    //         ], 200);
+
+    //     } catch (\Throwable $e) {
+    //         return response()->json([
+    //             'code'    => 500,
+    //             'success' => false,
+    //             'message' => 'Failed to fetch SO number.',
+    //             'data'    => [],
+    //         ], 500);
+    //     }
+    // }
     public function getNextSoNumber(Request $request): JsonResponse
     {
         try {
@@ -1367,22 +1402,15 @@ class OrdersController extends Controller
 
             $company = strtoupper(trim($validated['company']));
 
-            // FY postfix
-            $dt  = now();
-            $yy  = (int)$dt->format('y');
-            $yy2 = $yy + 1;
-            $postfix = sprintf('%02d-%02d', $yy, $yy2);
-
-            // ✅ DO NOT lockForUpdate here, DO NOT increment here
+            // ✅ DO NOT lock and DO NOT increment (preview only)
             $row = CounterModel::where('prefix', $company)->first();
 
-            // if not found, show first number as 001
             $nextNumber = $row ? (int)$row->number : 1;
+            $postfix    = $row ? trim((string)$row->postfix) : '';
 
-            // if FY changed, show new postfix
-            $usePostfix = $row ? ($row->postfix !== $postfix ? $postfix : $row->postfix) : $postfix;
-
-            $soNo = sprintf('%s/%03d/%s', $company, $nextNumber, $usePostfix);
+            $soNo = $postfix !== ''
+                ? sprintf('%s/%03d/%s', $company, $nextNumber, $postfix)
+                : sprintf('%s/%03d', $company, $nextNumber);
 
             return response()->json([
                 'code'    => 200,
@@ -1392,7 +1420,7 @@ class OrdersController extends Controller
                     'so_no'   => $soNo,
                     'prefix'  => $company,
                     'number'  => $nextNumber,
-                    'postfix' => $usePostfix,
+                    'postfix' => $postfix,
                 ],
             ], 200);
 
@@ -1405,5 +1433,4 @@ class OrdersController extends Controller
             ], 500);
         }
     }
-
 }
