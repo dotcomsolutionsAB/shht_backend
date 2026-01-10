@@ -54,41 +54,79 @@ class OrdersController extends Controller
             ]);
 
             // 2) Create inside a DB transaction (includes counter reservation)
-            $order = DB::transaction(function () use ($request) {
+        $order = DB::transaction(function () use ($request) {
 
-                // Reserve counter / generate so_no via CounterController helper
-                $counter = $this->counter->getOrIncrementForCompany($request->company);
+        $company = strtoupper(trim($request->company));
 
-                // Determine final status
-                $status = $request->input('status', 'pending');
+        // FY postfix
+        $dt  = now();
+        $yy  = (int)$dt->format('y');
+        $yy2 = $yy + 1;
+        $postfix = sprintf('%02d-%02d', $yy, $yy2);
 
-                // Persist order
-                return OrdersModel::create([
-                    'company'               => $request->company,
-                    'client'                => (int) $request->client,
-                    'client_contact_person' => (int) $request->client_contact_person,
+        // ✅ Lock counter row
+        $counter = CounterModel::where('prefix', $company)
+            ->lockForUpdate()
+            ->first();
 
-                    'email'                 => $request->email,
-                    'mobile'                => $request->mobile,
+        if (!$counter) {
+            // first record
+            $counter = CounterModel::create([
+                'prefix'  => $company,
+                'number'  => 1,
+                'postfix' => $postfix,
+            ]);
+        } else {
+            // FY changed
+            if ($counter->postfix !== $postfix) {
+                $counter->postfix = $postfix;
+                $counter->number  = 1; // optional reset for new FY
+                $counter->save();
+            }
+        }
 
-                    'so_no'                 => $counter['so_no'],
-                    'so_date'               => $request->so_date,
+        // ✅ expected SO number (no increment here)
+        $expectedSoNo = sprintf('%s/%03d/%s', $counter->prefix, (int)$counter->number, $counter->postfix);
 
-                    'order_no'              => $request->order_no,
-                    'order_date'            => $request->order_date,
-                    'order_value'           => $request->order_value,
+        // ✅ verify request so_no matches expected
+        if (trim((string)$request->so_no) !== $expectedSoNo) {
+            throw new \Exception("Invalid so_no. Expected: {$expectedSoNo}");
+        }
 
-                    'invoice'               => $request->invoice, // nullable
+        // final status
+        $status = $request->input('status', 'pending');
 
-                    'status'                => $status,
+        // ✅ create order with verified so_no
+        $order = OrdersModel::create([
+            'company'               => $company,
+            'client'                => (int) $request->client,
+            'client_contact_person' => (int) $request->client_contact_person,
 
-                    'initiated_by'          => auth()->id(),
-                    'checked_by'            => (int) $request->checked_by,
-                    // 'dispatched_by'         => (int) $request->dispatched_by,
+            'email'                 => $request->email,
+            'mobile'                => $request->mobile,
 
-                    'drive_link'            => $request->drive_link,
-                ]);
-            });
+            'so_no'                 => $expectedSoNo,
+            'so_date'               => $request->so_date,
+
+            'order_no'              => $request->order_no,
+            'order_date'            => $request->order_date,
+            'order_value'           => $request->order_value,
+
+            'invoice'               => $request->invoice,
+            'status'                => $status,
+
+            'initiated_by'          => auth()->id(),
+            'checked_by'            => (int) $request->checked_by,
+            'drive_link'            => $request->drive_link,
+        ]);
+
+        // ✅ Increment counter AFTER order created successfully
+        $counter->number = (int)$counter->number + 1;
+        $counter->save();
+
+        return $order;
+    });
+
 
             // 3) Success response
             return response()->json([
@@ -1258,65 +1296,114 @@ class OrdersController extends Controller
         }
     }
 
+    // public function getNextSoNumber(Request $request): JsonResponse
+    // {
+    //     try {
+    //         // Validate the input
+    //         $validated = $request->validate([
+    //             'company' => ['required', 'string', 'max:10'],   // SHHT / SHAPL
+    //         ]);
+
+    //         $company = strtoupper(trim($validated['company']));
+
+    //         // Current year → FY postfix
+    //         $dt  = now();
+    //         $yy  = (int)$dt->format('y');   // 25
+    //         $yy2 = $yy + 1;                 // 26
+    //         $postfix = sprintf('%02d-%02d', $yy, $yy2);
+
+    //         // Generate SO number atomically
+    //         $soNo = DB::transaction(function () use ($company, $postfix) {
+
+    //             // Fetch counter row for this company
+    //             $row = CounterModel::where('prefix', $company)
+    //                 ->lockForUpdate()
+    //                 ->first();
+
+    //             if (!$row) {
+    //                 // First record for this company
+    //                 $row = CounterModel::create([
+    //                     'prefix'  => $company,
+    //                     'number'  => 1,
+    //                     'postfix' => $postfix,
+    //                 ]);
+    //             } else {
+    //                 // If FY changed → update postfix
+    //                 if ($row->postfix !== $postfix) {
+    //                     $row->postfix = $postfix;
+    //                 }
+    //                 $row->number++;
+    //                 $row->save();
+    //             }
+
+    //             // Build final SO No: SHHT/001/25-26
+    //             return sprintf('%s/%03d/%s', $row->prefix, $row->number, $row->postfix);
+    //         });
+
+    //         return response()->json([
+    //             'code'    => 200,
+    //             'success' => true,
+    //             'message' => 'SO number generated successfully.',
+    //             'data'    => [ 'so_no' => $soNo ],
+    //         ], 200);
+
+    //     } catch (\Throwable $e) {
+    //         return response()->json([
+    //             'code'    => 500,
+    //             'success' => false,
+    //             'message' => 'Failed to generate SO number.',
+    //             'data'    => [],
+    //             'error'   => $e->getMessage(),
+    //         ], 500);
+    //     }
+    // }
+
     public function getNextSoNumber(Request $request): JsonResponse
     {
         try {
-            // Validate the input
             $validated = $request->validate([
                 'company' => ['required', 'string', 'max:10'],   // SHHT / SHAPL
             ]);
 
             $company = strtoupper(trim($validated['company']));
 
-            // Current year → FY postfix
+            // FY postfix
             $dt  = now();
-            $yy  = (int)$dt->format('y');   // 25
-            $yy2 = $yy + 1;                 // 26
+            $yy  = (int)$dt->format('y');
+            $yy2 = $yy + 1;
             $postfix = sprintf('%02d-%02d', $yy, $yy2);
 
-            // Generate SO number atomically
-            $soNo = DB::transaction(function () use ($company, $postfix) {
+            // ✅ DO NOT lockForUpdate here, DO NOT increment here
+            $row = CounterModel::where('prefix', $company)->first();
 
-                // Fetch counter row for this company
-                $row = CounterModel::where('prefix', $company)
-                    ->lockForUpdate()
-                    ->first();
+            // if not found, show first number as 001
+            $nextNumber = $row ? (int)$row->number : 1;
 
-                if (!$row) {
-                    // First record for this company
-                    $row = CounterModel::create([
-                        'prefix'  => $company,
-                        'number'  => 1,
-                        'postfix' => $postfix,
-                    ]);
-                } else {
-                    // If FY changed → update postfix
-                    if ($row->postfix !== $postfix) {
-                        $row->postfix = $postfix;
-                    }
-                    $row->number++;
-                    $row->save();
-                }
+            // if FY changed, show new postfix
+            $usePostfix = $row ? ($row->postfix !== $postfix ? $postfix : $row->postfix) : $postfix;
 
-                // Build final SO No: SHHT/001/25-26
-                return sprintf('%s/%03d/%s', $row->prefix, $row->number, $row->postfix);
-            });
+            $soNo = sprintf('%s/%03d/%s', $company, $nextNumber, $usePostfix);
 
             return response()->json([
                 'code'    => 200,
                 'success' => true,
-                'message' => 'SO number generated successfully.',
-                'data'    => [ 'so_no' => $soNo ],
+                'message' => 'SO number fetched successfully.',
+                'data'    => [
+                    'so_no'   => $soNo,
+                    'prefix'  => $company,
+                    'number'  => $nextNumber,
+                    'postfix' => $usePostfix,
+                ],
             ], 200);
 
         } catch (\Throwable $e) {
             return response()->json([
                 'code'    => 500,
                 'success' => false,
-                'message' => 'Failed to generate SO number.',
+                'message' => 'Failed to fetch SO number.',
                 'data'    => [],
-                'error'   => $e->getMessage(),
             ], 500);
         }
     }
+
 }
