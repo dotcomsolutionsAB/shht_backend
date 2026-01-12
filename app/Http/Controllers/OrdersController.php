@@ -820,9 +820,9 @@ class OrdersController extends Controller
 
                     // 🔥 ensure dispatched_by is staff
                     $dispatchedUser = User::find($dispatchedBy);
-                    if (!$dispatchedUser || $dispatchedUser->role !== 'staff') {
-                        throw new \Exception('dispatched_by user must be a valid staff user.');
-                    }
+                    // if (!$dispatchedUser || $dispatchedUser->role !== 'staff') {
+                    //     throw new \Exception('dispatched_by user must be a valid staff user.');
+                    // }
 
                     // (optional) if you also want checked_by here:
                     /*
