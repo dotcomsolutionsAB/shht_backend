@@ -955,9 +955,10 @@ class OrdersController extends Controller
             $items[] = ['type' => 'Total', 'count' => (int) $total];
 
             foreach ($preferredOrder as $status) {
-                if (isset($statusCounts[$status])) {
-                    $items[] = ['type' => $status, 'count' => (int) $statusCounts[$status]];
-                }
+                $items[] = [
+                    'type'  => $status,
+                    'count' => (int) ($statusCounts[$status] ?? 0),
+                ];
             }
 
             $remainingStatuses = array_diff($statusCounts->keys()->all(), $preferredOrder);
