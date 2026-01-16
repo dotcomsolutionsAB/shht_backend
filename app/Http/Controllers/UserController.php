@@ -420,12 +420,24 @@ class UserController extends Controller
     }
 
     // dashboard
-    public function summary()
+    public function summary(Request $request)
     {
         try {
+            $dateFrom = $request->input('date_from'); // YYYY-MM-DD
+            $dateTo   = $request->input('date_to');   // YYYY-MM-DD
+
+            $ordersQuery = OrdersModel::query();
+            if (!empty($dateFrom)) {
+                $ordersQuery->whereDate('order_date', '>=', $dateFrom);
+            }
+            if (!empty($dateTo)) {
+                $ordersQuery->whereDate('order_date', '<=', $dateTo);
+            }
+
             // Aggregate order counts in one query
-            $ordersAgg = OrdersModel::selectRaw("
+            $ordersAgg = $ordersQuery->selectRaw("
                 COUNT(*) as total_orders,
+                SUM(order_value) as total_order_value,
                 SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as total_pending_orders,
                 SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as total_completed_orders,
                 SUM(CASE WHEN status = 'short_closed' THEN 1 ELSE 0 END) as total_short_closed,
@@ -444,6 +456,7 @@ class UserController extends Controller
                     'total_orders'           => (int) ($ordersAgg->total_orders ?? 0),
                     'total_clients'          => (int) $totalClients,
                     'total_users'            => (int) $totalUsers,
+                    'total_order_value'      => (float) ($ordersAgg->total_order_value ?? 0),
                     'total_pending_orders'   => (int) ($ordersAgg->total_pending_orders ?? 0),
                     'total_completed_orders' => (int) ($ordersAgg->total_completed_orders ?? 0),
                     'total_short_closed'     => (int) ($ordersAgg->total_short_closed ?? 0),
