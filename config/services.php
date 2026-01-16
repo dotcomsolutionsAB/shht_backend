@@ -35,4 +35,13 @@ return [
         ],
     ],
 
+    'whatsapp' => [
+        'base_url' => env('WHATSAPP_API_BASE_URL', 'https://graph.facebook.com'),
+        'api_version' => env('WHATSAPP_API_VERSION', 'v18.0'),
+        'phone_number_id' => env('WHATSAPP_PHONE_NUMBER_ID'),
+        'access_token' => env('WHATSAPP_ACCESS_TOKEN'),
+        'template_language' => env('WHATSAPP_TEMPLATE_LANGUAGE', 'en'),
+        'default_country_code' => env('WHATSAPP_DEFAULT_COUNTRY_CODE', '91'),
+    ],
+
 ];

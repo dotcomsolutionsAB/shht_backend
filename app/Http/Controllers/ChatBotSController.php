@@ -3,12 +3,15 @@
 namespace App\Http\Controllers;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Validator;
+use App\Models\ClientsModel;
 use App\Models\OrdersModel;
 use App\Models\User;
 use App\Models\InvoiceModel;
+use App\Services\WhatsAppService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 
 class ChatBotSController extends Controller
@@ -459,6 +462,9 @@ SN: %d\nClient: *%s*\nOrder No: %s\nOrder Date: %s\nOrder Value: %.2f\n\n",
         }
 
         try {
+            $previousStatus = $order->status;
+            $dispatchAssignee = null;
+
             // 5) Prepare update data
             $updateData = [
                 'status'           => $status,
@@ -470,10 +476,35 @@ SN: %d\nClient: *%s*\nOrder No: %s\nOrder Date: %s\nOrder Value: %.2f\n\n",
             if ($status === 'dispatched') {
                 $updateData['dispatched_date'] = Carbon::now()->format('Y-m-d');
                 $updateData['dispatched_by'] = $request->input('dispatched_by');
+                if (!empty($updateData['dispatched_by'])) {
+                    $dispatchAssignee = User::find($updateData['dispatched_by']);
+                }
             }
 
             // 6) Update order
             $order->update($updateData);
+
+            if ($previousStatus === 'pending' && $status === 'dispatched' && $dispatchAssignee) {
+                try {
+                    $clientName = ClientsModel::where('id', $order->client)->value('name');
+                    app(WhatsAppService::class)->sendTemplateMessage(
+                        $dispatchAssignee->mobile ?? null,
+                        'new_shht_dispatch_assigned',
+                        [
+                            $clientName ?? '',
+                            $order->so_no ?? '',
+                            $order->order_no ?? '',
+                            $order->order_value ?? '',
+                            $dispatchAssignee->name ?? '',
+                        ]
+                    );
+                } catch (\Throwable $e) {
+                    Log::error('WhatsApp dispatch notification failed (chatbot).', [
+                        'order_id' => $order->id,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
 
             // 🔹 Get initiated_by user's mobile
             $initiatedMobile = null;

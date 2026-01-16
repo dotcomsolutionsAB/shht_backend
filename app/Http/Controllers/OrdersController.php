@@ -1,9 +1,11 @@
 <?php
 
 namespace App\Http\Controllers;
+use App\Models\ClientsModel;
 use App\Models\OrdersModel;
 use App\Models\CounterModel;
 use App\Models\User;
+use App\Services\WhatsAppService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -626,7 +628,7 @@ class OrdersController extends Controller
                 'pending'         => ['dispatched'],
                 'dispatched'      => ['completed', 'partial_pending', 'out_of_stock'],
                 'completed'       => ['invoiced', 'cancelled'],
-                'partial_pending' => ['dispatched', 'short_closed', 'cancelled'],
+                'partial_pending' => ['pending','dispatched', 'short_closed', 'cancelled'],
                 'out_of_stock'    => ['pending', 'cancelled'],
                 'short_closed'    => ['invoiced', 'cancelled'],
 
@@ -792,6 +794,7 @@ class OrdersController extends Controller
         DB::beginTransaction();
         try {
             $order = OrdersModel::where('order_no', $validated['order_id'])->firstOrFail();
+            $previousStatus = $order->status;
 
             /* ----------------------------------------------------------
             * A.  Is the requested move allowed ?
@@ -807,6 +810,7 @@ class OrdersController extends Controller
 
             $user  = auth()->user(); // via sanctum / passport / whatever you use
             $extra = [];
+            $dispatchAssignee = null;
 
             /* ----------------------------------------------------------
             * B.  Status-specific checks & data preparation
@@ -820,6 +824,7 @@ class OrdersController extends Controller
 
                     // 🔥 ensure dispatched_by is staff
                     $dispatchedUser = User::find($dispatchedBy);
+                    $dispatchAssignee = $dispatchedUser;
                     // if (!$dispatchedUser || $dispatchedUser->role !== 'staff') {
                     //     throw new \Exception('dispatched_by user must be a valid staff user.');
                     // }
@@ -874,6 +879,28 @@ class OrdersController extends Controller
             $order->save();
 
             DB::commit();
+
+            if ($previousStatus === 'pending' && $validated['status'] === 'dispatched' && $dispatchAssignee) {
+                try {
+                    $clientName = ClientsModel::where('id', $order->client)->value('name');
+                    app(WhatsAppService::class)->sendTemplateMessage(
+                        $dispatchAssignee->mobile ?? null,
+                        'new_shht_dispatch_assigned',
+                        [
+                            $clientName ?? '',
+                            $order->so_no ?? '',
+                            $order->order_no ?? '',
+                            $order->order_value ?? '',
+                            $dispatchAssignee->name ?? '',
+                        ]
+                    );
+                } catch (\Throwable $e) {
+                    Log::error('WhatsApp dispatch notification failed.', [
+                        'order_id' => $order->id,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
 
             return response()->json([
                 'code'    => 200,
