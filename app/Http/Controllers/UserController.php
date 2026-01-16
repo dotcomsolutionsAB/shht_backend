@@ -423,8 +423,8 @@ class UserController extends Controller
     public function summary(Request $request)
     {
         try {
-            $dateFrom = $request->input('date_from'); // YYYY-MM-DD
-            $dateTo   = $request->input('date_to');   // YYYY-MM-DD
+            $dateFrom = $request->input('date_from', $request->input('start_date')); // YYYY-MM-DD
+            $dateTo   = $request->input('date_to', $request->input('end_date'));     // YYYY-MM-DD
 
             $ordersQuery = OrdersModel::query();
             if (!empty($dateFrom)) {
