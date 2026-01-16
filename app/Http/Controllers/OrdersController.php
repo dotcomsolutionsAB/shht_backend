@@ -625,9 +625,9 @@ class OrdersController extends Controller
             $transitions = [
                 'pending'         => ['dispatched'],
                 'dispatched'      => ['completed', 'partial_pending', 'out_of_stock'],
-                'completed'       => ['cancelled'],
-                'partial_pending' => ['dispatch', 'short_closed', 'cancelled'],
-                'out_of_stock'    => ['dispatch', 'cancelled'],
+                'completed'       => ['invoiced', 'cancelled'],
+                'partial_pending' => ['dispatched', 'short_closed', 'cancelled'],
+                'out_of_stock'    => ['pending', 'cancelled'],
                 'short_closed'    => ['invoiced', 'cancelled'],
 
                 /* ------------------------------------------------------
