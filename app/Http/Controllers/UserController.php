@@ -441,7 +441,11 @@ class UserController extends Controller
                 SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as total_pending_orders,
                 SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as total_completed_orders,
                 SUM(CASE WHEN status = 'short_closed' THEN 1 ELSE 0 END) as total_short_closed,
-                SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END) as total_cancelled
+                SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END) as total_cancelled,
+                SUM(CASE WHEN status = 'pending' THEN order_value ELSE 0 END) as total_pending_order_value,
+                SUM(CASE WHEN status = 'completed' THEN order_value ELSE 0 END) as total_completed_order_value,
+                SUM(CASE WHEN status = 'short_closed' THEN order_value ELSE 0 END) as total_short_closed_order_value,
+                SUM(CASE WHEN status = 'cancelled' THEN order_value ELSE 0 END) as total_cancelled_order_value
             ")->first();
 
             // Other totals
@@ -457,6 +461,13 @@ class UserController extends Controller
                     'total_clients'          => (int) $totalClients,
                     'total_users'            => (int) $totalUsers,
                     'total_order_value'      => (float) ($ordersAgg->total_order_value ?? 0),
+                    'order_values'           => [
+                        'total'        => (float) ($ordersAgg->total_order_value ?? 0),
+                        'pending'      => (float) ($ordersAgg->total_pending_order_value ?? 0),
+                        'completed'    => (float) ($ordersAgg->total_completed_order_value ?? 0),
+                        'short_closed' => (float) ($ordersAgg->total_short_closed_order_value ?? 0),
+                        'cancelled'    => (float) ($ordersAgg->total_cancelled_order_value ?? 0),
+                    ],
                     'total_pending_orders'   => (int) ($ordersAgg->total_pending_orders ?? 0),
                     'total_completed_orders' => (int) ($ordersAgg->total_completed_orders ?? 0),
                     'total_short_closed'     => (int) ($ordersAgg->total_short_closed ?? 0),
