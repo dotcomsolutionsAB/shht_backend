@@ -108,6 +108,7 @@ Route::middleware('auth:sanctum', 'role:admin,sales,staff,dispatch')->group(func
         Route::post('/changeStatus', [OrdersController::class, 'updateStatus']);
         Route::post('/export', [OrdersController::class, 'exportExcel']);
         Route::post('/get_order_id', [OrdersController::class, 'getNextSoNumber']);
+        Route::get('/status_counts', [OrdersController::class, 'orderStatusCounts']);
     });
 
     // invoice route

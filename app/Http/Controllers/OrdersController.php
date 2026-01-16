@@ -918,6 +918,75 @@ class OrdersController extends Controller
         ][$current] ?? [];
     }
 
+    public function orderStatusCounts(Request $request): JsonResponse
+    {
+        try {
+            $dateFrom = $request->input('date_from', $request->input('start_date')); // YYYY-MM-DD
+            $dateTo   = $request->input('date_to', $request->input('end_date'));     // YYYY-MM-DD
+
+            $baseQuery = OrdersModel::query();
+            if (!empty($dateFrom)) {
+                $baseQuery->whereDate('order_date', '>=', $dateFrom);
+            }
+            if (!empty($dateTo)) {
+                $baseQuery->whereDate('order_date', '<=', $dateTo);
+            }
+
+            $total = (clone $baseQuery)->count();
+
+            $statusCounts = $baseQuery
+                ->selectRaw('status, COUNT(*) as count')
+                ->groupBy('status')
+                ->get()
+                ->pluck('count', 'status');
+
+            $preferredOrder = [
+                'pending',
+                'dispatched',
+                'completed',
+                'invoiced',
+                'partial_pending',
+                'short_closed',
+                'cancelled',
+                'out_of_stock',
+            ];
+
+            $items = [];
+            $items[] = ['type' => 'Total', 'count' => (int) $total];
+
+            foreach ($preferredOrder as $status) {
+                if (isset($statusCounts[$status])) {
+                    $items[] = ['type' => $status, 'count' => (int) $statusCounts[$status]];
+                }
+            }
+
+            $remainingStatuses = array_diff($statusCounts->keys()->all(), $preferredOrder);
+            sort($remainingStatuses);
+            foreach ($remainingStatuses as $status) {
+                $items[] = ['type' => $status, 'count' => (int) $statusCounts[$status]];
+            }
+
+            return response()->json([
+                'code'    => 200,
+                'status'  => true,
+                'message' => 'Order status counts retrieved.',
+                'data'    => $items,
+            ], 200);
+        } catch (\Throwable $e) {
+            Log::error('Order status counts failed', [
+                'error' => $e->getMessage(),
+                'file'  => $e->getFile(),
+                'line'  => $e->getLine(),
+            ]);
+
+            return response()->json([
+                'code'    => 500,
+                'status'  => false,
+                'message' => 'Something went wrong while fetching order status counts.',
+            ], 500);
+        }
+    }
+
     // export order
     // public function exportCsv(Request $request)
     // {
