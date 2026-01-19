@@ -785,6 +785,11 @@ class OrdersController extends Controller
 
             // if you want to enforce dispatched_by presence & validity when used:
             'optional_fields.dispatched_by'   => 'nullable|integer|exists:users,id',
+            // allow invoice fields either inside optional_fields or at top-level
+            'optional_fields.invoice_number' => 'nullable|string',
+            'optional_fields.invoice_date'   => 'nullable|date',
+            'invoice_number'                 => 'nullable|string',
+            'invoice_date'                   => 'nullable|date',
             // if later you also support checked_by via this endpoint:
             // 'optional_fields.checked_by'   => 'nullable|integer|exists:users,id',
         ];
@@ -850,8 +855,10 @@ class OrdersController extends Controller
                     break;
 
                 case 'invoiced':
-                    $invNum  = $validated['optional_fields']['invoice_number'] ?? null;
-                    $invDate = $validated['optional_fields']['invoice_date'] ?? null;
+                    $invNum  = $validated['optional_fields']['invoice_number']
+                        ?? $request->input('invoice_number');
+                    $invDate = $validated['optional_fields']['invoice_date']
+                        ?? $request->input('invoice_date');
                     if (!$invNum || !$invDate) {
                         throw new \Exception('invoice_number and invoice_date are required for invoicing.');
                     }
