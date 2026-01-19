@@ -9,6 +9,12 @@ class WhatsAppService
 {
     public function sendTemplateMessage(?string $to, string $template, array $bodyParams): bool
     {
+        $result = $this->sendTemplateMessageResult($to, $template, $bodyParams);
+        return $result['ok'] ?? false;
+    }
+
+    public function sendTemplateMessageResult(?string $to, string $template, array $bodyParams): array
+    {
         $toNumber = $this->normalizeNumber($to);
         $config = config('services.whatsapp');
 
@@ -16,7 +22,12 @@ class WhatsAppService
             Log::warning('WhatsApp send skipped due to missing config or recipient.', [
                 'to' => $to,
             ]);
-            return false;
+            return [
+                'ok' => false,
+                'status' => null,
+                'body' => null,
+                'error' => 'Missing config or recipient.',
+            ];
         }
 
         $url = rtrim($config['base_url'] ?? 'https://graph.facebook.com', '/')
@@ -58,10 +69,20 @@ class WhatsAppService
                 'status' => $response->status(),
                 'body' => $response->body(),
             ]);
-            return false;
+            return [
+                'ok' => false,
+                'status' => $response->status(),
+                'body' => $response->body(),
+                'error' => $response->json('error.message') ?? 'Request failed.',
+            ];
         }
 
-        return true;
+        return [
+            'ok' => true,
+            'status' => $response->status(),
+            'body' => $response->json(),
+            'error' => null,
+        ];
     }
 
     private function normalizeNumber(?string $mobile): ?string

@@ -14,7 +14,7 @@ class WhatsAppController extends Controller
             'to' => ['required', 'string'],
         ]);
 
-        $sent = app(WhatsAppService::class)->sendTemplateMessage(
+        $result = app(WhatsAppService::class)->sendTemplateMessageResult(
             $validated['to'],
             'new_shht_dispatch_assigned',
             [
@@ -27,9 +27,12 @@ class WhatsAppController extends Controller
         );
 
         return response()->json([
-            'code' => $sent ? 200 : 500,
-            'status' => $sent,
-            'message' => $sent ? 'WhatsApp test message sent.' : 'Failed to send WhatsApp test message.',
-        ], $sent ? 200 : 500);
+            'code' => ($result['ok'] ?? false) ? 200 : 500,
+            'status' => (bool) ($result['ok'] ?? false),
+            'message' => ($result['ok'] ?? false) ? 'WhatsApp test message sent.' : 'Failed to send WhatsApp test message.',
+            'error' => $result['error'] ?? null,
+            'provider_status' => $result['status'] ?? null,
+            'provider_response' => $result['body'] ?? null,
+        ], ($result['ok'] ?? false) ? 200 : 500);
     }
 }
