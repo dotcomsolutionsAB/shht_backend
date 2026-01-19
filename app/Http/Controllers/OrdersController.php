@@ -936,7 +936,7 @@ class OrdersController extends Controller
         return [
             'pending'         => ['dispatched'],
             'dispatched'      => ['completed','partial_pending','out_of_stock'],
-            'completed'       => ['cancelled'],
+            'completed'       => ['cancelled','invoiced'],
             'partial_pending' => ['dispatched','short_closed','cancelled'],
             'out_of_stock'    => ['dispatched','cancelled'],
             'short_closed'    => ['invoiced','cancelled'],
