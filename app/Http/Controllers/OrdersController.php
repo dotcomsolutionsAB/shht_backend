@@ -884,7 +884,7 @@ class OrdersController extends Controller
                 try {
                     $clientName = ClientsModel::where('id', $order->client)->value('name');
                     app(WhatsAppService::class)->sendTemplateMessage(
-                        $dispatchAssignee->mobile ?? null,
+                        '+'.$dispatchAssignee->mobile ?? null,
                         'new_shht_dispatch_assigned',
                         [
                             $clientName ?? '',
