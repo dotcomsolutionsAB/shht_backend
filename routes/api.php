@@ -13,6 +13,7 @@ use App\Http\Controllers\ClientContactPersonController;
 use App\Http\Controllers\OrdersController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\ChatBotSController;
+use App\Http\Controllers\WhatsAppController;
 
 // Route::get('/user', function (Request $request) {
 //     return $request->user();
@@ -110,6 +111,8 @@ Route::middleware('auth:sanctum', 'role:admin,sales,staff,dispatch')->group(func
         Route::post('/get_order_id', [OrdersController::class, 'getNextSoNumber']);
         Route::get('/status_counts', [OrdersController::class, 'orderStatusCounts']);
     });
+
+    Route::post('/whatsapp/test', [WhatsAppController::class, 'sendTest']);
 
     // invoice route
     Route::prefix('invoice')->group(function () {
