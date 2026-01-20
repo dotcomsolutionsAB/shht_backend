@@ -120,7 +120,7 @@ class UserController extends Controller
             }
 
             // --- List all users with pagination + search ---
-            $limit  = (int) $request->input('limit', 10);
+            $limit  = (int) $request->input('limit', 100);
             $offset = (int) $request->input('offset', 0);
             $search = trim((string) $request->input('search', ''));
 
