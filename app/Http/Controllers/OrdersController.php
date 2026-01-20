@@ -780,7 +780,7 @@ class OrdersController extends Controller
     {
         $rules = [
             'order_id'        => 'required|string|exists:t_orders,order_no',
-            'status'          => 'required|string|in:dispatched,invoiced,completed,partial_pending,out_of_stock,short_closed,cancelled',
+            'status'          => 'required|string|in:dispatched,invoiced,completed,partial_pending,out_of_stock,short_closed,cancelled,pending',
             'optional_fields' => 'nullable|array',
 
             // if you want to enforce dispatched_by presence & validity when used:
