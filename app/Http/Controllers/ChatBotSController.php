@@ -431,7 +431,7 @@ SN: %d\nClient: *%s*\nOrder No: %s\nOrder Date: %s\nOrder Value: %.2f\n\n",
         // 2) Validate input data
         $validator = Validator::make($request->all(), [
             'so_number'        => 'required|string|exists:t_orders,so_no',
-            'status'           => 'required|in:pending,dispatched,partial_pending,invoiced,completed,short_closed,cancelled,out_of_stock',
+            'status'           => 'required|in:pending,dispatched,partial_pending,invoiced,completed,short_closed,cancelled,out_of_stock,pending',
             'folder_link'      => 'nullable|url|max:255',
             'dispatched_by'    => 'nullable|exists:users,id',
             'dispatch_remarks' => 'nullable|string|max:2000',
