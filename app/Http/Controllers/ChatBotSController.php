@@ -484,7 +484,10 @@ SN: %d\nClient: *%s*\nOrder No: %s\nOrder Date: %s\nOrder Value: %.2f\n\n",
             // 6) Update order
             $order->update($updateData);
 
-            if ($previousStatus === 'pending' && $status === 'dispatched' && $dispatchAssignee) {
+            if (in_array($previousStatus, ['pending', 'partial_pending'], true)
+                && $status === 'dispatched'
+                && $dispatchAssignee
+            ) {
                 try {
                     $clientName = ClientsModel::where('id', $order->client)->value('name');
                     app(WhatsAppService::class)->sendTemplateMessage(

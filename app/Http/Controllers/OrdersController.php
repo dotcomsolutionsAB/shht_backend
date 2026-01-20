@@ -887,7 +887,10 @@ class OrdersController extends Controller
 
             DB::commit();
 
-            if ($previousStatus === 'pending' && $validated['status'] === 'dispatched' && $dispatchAssignee) {
+            if (in_array($previousStatus, ['pending', 'partial_pending'], true)
+                && $validated['status'] === 'dispatched'
+                && $dispatchAssignee
+            ) {
                 try {
                     $clientName = ClientsModel::where('id', $order->client)->value('name');
                     app(WhatsAppService::class)->sendTemplateMessage(
