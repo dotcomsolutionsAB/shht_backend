@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use Illuminate\Support\Facades\Storage;
@@ -534,6 +535,13 @@ class UserController extends Controller
                 'data'    => ['user_name' => $user->username],
             ], 200);
 
+        } catch (ValidationException $e) {
+            return response()->json([
+                'code'    => 422,
+                'success' => false,
+                'message' => 'Validation failed.',
+                'errors'  => $e->errors(),
+            ], 422);
         } catch (\Throwable $e) {
             Log::error('Update password failed', [
                 'error' => $e->getMessage(),
