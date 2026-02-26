@@ -23,6 +23,9 @@ Route::post('/register', [UserController::class, 'create']);
 
 Route::post('/login', [AuthController::class, 'login']);
 
+Route::post('/otp/send', [WhatsAppController::class, 'sendOtp']);
+Route::post('/otp/verify', [WhatsAppController::class, 'verifyOtp']);
+
 // chatbots route
 Route::prefix('chatbot')->group(function () {
     Route::post('/get_orders', [ChatBotSController::class, 'getClientOrders']);

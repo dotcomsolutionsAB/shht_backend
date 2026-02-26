@@ -5,9 +5,89 @@ namespace App\Http\Controllers;
 use App\Services\WhatsAppService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 class WhatsAppController extends Controller
 {
+    public function sendOtp(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'mobile' => ['required', 'string'],
+        ]);
+
+        $normalized = $this->normalizeNumber($validated['mobile']);
+        if ($normalized === null) {
+            return response()->json([
+                'code' => 422,
+                'status' => false,
+                'message' => 'Invalid mobile number.',
+            ], 422);
+        }
+
+        $length = (int) env('OTP_LENGTH', 6);
+        if ($length < 4) {
+            $length = 6;
+        }
+
+        $otp = (string) random_int(10 ** ($length - 1), (10 ** $length) - 1);
+        $ttlMinutes = (int) env('OTP_TTL_MINUTES', 5);
+        if ($ttlMinutes < 1) {
+            $ttlMinutes = 5;
+        }
+
+        Cache::put($this->otpCacheKey($normalized), $otp, now()->addMinutes($ttlMinutes));
+
+        $result = app(WhatsAppService::class)->sendTemplateMessageResult(
+            $normalized,
+            'otp',
+            [$otp]
+        );
+
+        return response()->json([
+            'code' => ($result['ok'] ?? false) ? 200 : 500,
+            'status' => (bool) ($result['ok'] ?? false),
+            'message' => ($result['ok'] ?? false) ? 'OTP sent successfully.' : 'Failed to send OTP.',
+            'error' => $result['error'] ?? null,
+            'provider_status' => $result['status'] ?? null,
+            'provider_response' => $result['body'] ?? null,
+        ], ($result['ok'] ?? false) ? 200 : 500);
+    }
+
+    public function verifyOtp(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'mobile' => ['required', 'string'],
+            'otp' => ['required', 'string'],
+        ]);
+
+        $normalized = $this->normalizeNumber($validated['mobile']);
+        if ($normalized === null) {
+            return response()->json([
+                'code' => 422,
+                'status' => false,
+                'message' => 'Invalid mobile number.',
+            ], 422);
+        }
+
+        $cacheKey = $this->otpCacheKey($normalized);
+        $cachedOtp = Cache::get($cacheKey);
+        if (!$cachedOtp || trim((string) $validated['otp']) !== (string) $cachedOtp) {
+            return response()->json([
+                'code' => 422,
+                'status' => false,
+                'message' => 'Invalid or expired OTP.',
+            ], 422);
+        }
+
+        Cache::forget($cacheKey);
+
+        return response()->json([
+            'code' => 200,
+            'status' => true,
+            'message' => 'OTP verified successfully.',
+        ], 200);
+    }
+
     public function sendTest(Request $request): JsonResponse
     {
         $validated = $request->validate([
@@ -34,5 +114,29 @@ class WhatsAppController extends Controller
             'provider_status' => $result['status'] ?? null,
             'provider_response' => $result['body'] ?? null,
         ], ($result['ok'] ?? false) ? 200 : 500);
+    }
+
+    private function normalizeNumber(?string $mobile): ?string
+    {
+        if (empty($mobile)) {
+            return null;
+        }
+
+        $digits = preg_replace('/\D+/', '', $mobile);
+        if ($digits === '') {
+            return null;
+        }
+
+        $defaultCountryCode = config('services.whatsapp.default_country_code', '91');
+        if (strlen($digits) === 10 && !empty($defaultCountryCode)) {
+            return $defaultCountryCode . $digits;
+        }
+
+        return $digits;
+    }
+
+    private function otpCacheKey(string $normalizedMobile): string
+    {
+        return 'otp:' . $normalizedMobile;
     }
 }
