@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\User;
 use App\Services\WhatsAppService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -109,10 +110,45 @@ class WhatsAppController extends Controller
 
         Cache::forget($cacheKey);
 
+        $digits = preg_replace('/\D+/', '', $normalized);
+        $mobile10 = substr($digits, -10);
+        if (strlen($mobile10) !== 10) {
+            return response()->json([
+                'code' => 422,
+                'success' => false,
+                'message' => 'Invalid mobile number.',
+            ], 422);
+        }
+
+        $user = User::whereRaw(
+            "RIGHT(REGEXP_REPLACE(mobile, '[^0-9]', ''), 10) = ?",
+            [$mobile10]
+        )->first();
+
+        if (!$user) {
+            return response()->json([
+                'code' => 401,
+                'success' => false,
+                'message' => 'Invalid user.',
+            ], 401);
+        }
+
+        $token = $user->createToken('API TOKEN')->plainTextToken;
+
         return response()->json([
             'code' => 200,
-            'status' => true,
-            'message' => 'OTP verified successfully.',
+            'success' => true,
+            'message' => 'User logged in successfully!',
+            'data' => [
+                'role'        => $user->role,
+                'token'       => $token,
+                'user_id'     => $user->id,
+                'name'        => $user->name,
+                'username'    => $user->username,
+                'email'       => $user->email,
+                'order_views' => $user->order_views,
+                'change_status'=> $user->change_status,
+            ],
         ], 200);
     }
 
