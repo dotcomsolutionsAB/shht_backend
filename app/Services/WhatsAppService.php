@@ -7,13 +7,13 @@ use Illuminate\Support\Facades\Log;
 
 class WhatsAppService
 {
-    public function sendTemplateMessage(?string $to, string $template, array $bodyParams): bool
+    public function sendTemplateMessage(?string $to, string $template, array $bodyParams = [], ?array $components = null): bool
     {
-        $result = $this->sendTemplateMessageResult($to, $template, $bodyParams);
+        $result = $this->sendTemplateMessageResult($to, $template, $bodyParams, $components);
         return $result['ok'] ?? false;
     }
 
-    public function sendTemplateMessageResult(?string $to, string $template, array $bodyParams): array
+    public function sendTemplateMessageResult(?string $to, string $template, array $bodyParams = [], ?array $components = null): array
     {
         $toNumber = $this->normalizeNumber($to);
         $config = config('services.whatsapp');
@@ -46,17 +46,21 @@ class WhatsAppService
                 'language' => [
                     'code' => $config['template_language'] ?? 'en',
                 ],
-                'components' => [
-                    [
-                        'type' => 'body',
-                        'parameters' => array_map(
-                            fn ($param) => ['type' => 'text', 'text' => (string) $param],
-                            $bodyParams
-                        ),
-                    ],
-                ],
             ],
         ];
+        if (is_array($components) && !empty($components)) {
+            $payload['template']['components'] = $components;
+        } else {
+            $payload['template']['components'] = [
+                [
+                    'type' => 'body',
+                    'parameters' => array_map(
+                        fn ($param) => ['type' => 'text', 'text' => (string) $param],
+                        $bodyParams
+                    ),
+                ],
+            ];
+        }
 
         $response = Http::withToken($config['access_token'])
             ->timeout(10)

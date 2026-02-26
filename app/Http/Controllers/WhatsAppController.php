@@ -13,6 +13,7 @@ class WhatsAppController extends Controller
     {
         $validated = $request->validate([
             'mobile' => ['required', 'string'],
+            'button_param' => ['nullable', 'string'],
         ]);
 
         $normalized = $this->normalizeNumber($validated['mobile']);
@@ -37,10 +38,37 @@ class WhatsAppController extends Controller
 
         Cache::put($this->otpCacheKey($normalized), $otp, now()->addMinutes($ttlMinutes));
 
+        $buttonParam = $validated['button_param'] ?? env('WHATSAPP_OTP_BUTTON_PARAM');
+        if (empty($buttonParam)) {
+            return response()->json([
+                'code' => 422,
+                'status' => false,
+                'message' => 'OTP template requires button_param.',
+            ], 422);
+        }
+
+        $components = [
+            [
+                'type' => 'body',
+                'parameters' => [
+                    ['type' => 'text', 'text' => $otp],
+                ],
+            ],
+            [
+                'type' => 'button',
+                'sub_type' => 'url',
+                'index' => '0',
+                'parameters' => [
+                    ['type' => 'text', 'text' => (string) $buttonParam],
+                ],
+            ],
+        ];
+
         $result = app(WhatsAppService::class)->sendTemplateMessageResult(
             $normalized,
             'otp',
-            [$otp]
+            [],
+            $components
         );
 
         return response()->json([
