@@ -129,6 +129,7 @@ class UserController extends Controller
             $filterEmailStatus    = $request->input('email_status');    // yes/no
             $filterWhatsappStatus = $request->input('whatsapp_status'); // yes/no
             $filterRole = $request->input('role'); // admin, sales, staff, dispatch
+            $filterIsRmRaw = $request->input('is_rm'); // true/false
 
             // Total before filtering
             $total = User::count();
@@ -156,6 +157,10 @@ class UserController extends Controller
 
             if (!empty($filterRole) && in_array($filterRole, ['admin', 'sales', 'staff', 'dispatch'])) {
                 $q->where('role', $filterRole);
+            }
+            $filterIsRm = is_bool($filterIsRmRaw) ? $filterIsRmRaw : (is_string($filterIsRmRaw) && strtolower($filterIsRmRaw) === 'true');
+            if ($filterIsRm) {
+                $q->where('is_rm', 1);
             }
 
             $users = $q->skip($offset)->take($limit)->get();
