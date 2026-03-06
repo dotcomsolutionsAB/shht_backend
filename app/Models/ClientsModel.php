@@ -8,7 +8,7 @@ class ClientsModel extends Model
 {
     //
     protected $table = 't_clients';
-    protected $fillable = ['name', 'category', 'sub_category', 'tags', 'city', 'state', 'pincode', 'rm', 'sales_person', 'is_rm'];
+    protected $fillable = ['name', 'category', 'sub_category', 'tags', 'city', 'state', 'pincode', 'rm', 'sales_person'];
 
     public function categoryRef()
     {
