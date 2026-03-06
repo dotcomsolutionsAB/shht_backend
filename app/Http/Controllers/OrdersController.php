@@ -402,7 +402,7 @@ class OrdersController extends Controller
                 'order_date'            => ['required', 'date'],
                 'order_value'           => ['required', 'numeric', 'min:0'],
                 'invoice'               => ['nullable', 'integer'],
-                'status'                => ['required', Rule::in([
+                'status'                => ['nullable', Rule::in([
                     'pending',
                     'dispatched',
                     'partial_pending',
@@ -412,9 +412,9 @@ class OrdersController extends Controller
                     'cancelled',
                     'out_of_stock'
                 ])],
-                'initiated_by'          => ['required', 'integer', 'exists:users,id'],
-                'checked_by'            => ['required', 'integer', 'exists:users,id'],
-                'dispatched_by'         => ['required', 'integer', 'exists:users,id'],
+                'initiated_by'          => ['nullable', 'integer', 'exists:users,id'],
+                'checked_by'            => ['nullable', 'integer', 'exists:users,id'],
+                'dispatched_by'         => ['nullable', 'integer', 'exists:users,id'],
                 'drive_link'            => ['nullable', 'string', 'max:255'],
             ]);
 
@@ -430,10 +430,7 @@ class OrdersController extends Controller
                 'order_date'            => $request->order_date,
                 'order_value'           => $request->order_value,
                 'invoice'               => $request->invoice,
-                'status'                => $request->status,
-                'initiated_by'          => $request->initiated_by,
                 'checked_by'            => $request->checked_by,
-                'dispatched_by'         => $request->dispatched_by,
                 'drive_link'            => $request->drive_link,
             ];
 
