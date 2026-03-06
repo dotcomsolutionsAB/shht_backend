@@ -33,6 +33,7 @@ class UserController extends Controller
             'mobile'        => ['required', 'string', 'max:15'],
             'order_views'   => ['required', Rule::in(['self', 'global'])],
             'change_status' => ['required', Rule::in(['0', '1'])],
+            'is_rm'         => ['nullable', 'boolean'],
         ]);
 
         // 2) Create user inside a transaction
@@ -51,6 +52,7 @@ class UserController extends Controller
                 $u->change_status = $validated['change_status'] ?? '0';
                 $u->email_status    = '0';
                 $u->whatsapp_status = '0';
+                $u->is_rm           = (bool) ($validated['is_rm'] ?? false);
 
                 $u->save();
 
@@ -73,6 +75,7 @@ class UserController extends Controller
                     'change_status' => $user->change_status,
                     'email_status'    => $user->email_status,
                     'whatsapp_status' => $user->whatsapp_status,
+                    'is_rm'         => (bool) $user->is_rm,
                     'created_at'    => $user->created_at,
                 ],
             ], 200);
@@ -101,7 +104,7 @@ class UserController extends Controller
         try {
             if ($id) {
                 // --- Fetch single user by ID ---
-                $user = User::select('id', 'name', 'email', 'username', 'role', 'order_views', 'change_status', 'email_status', 'whatsapp_status')
+                $user = User::select('id', 'name', 'email', 'username', 'role', 'order_views', 'change_status', 'email_status', 'whatsapp_status', 'is_rm')
                     ->find($id);
 
                 if (!$user) {
@@ -135,7 +138,7 @@ class UserController extends Controller
             $total = User::count();
 
             // Query for filtered data
-            $q = User::select('id','name','email','username','role','category','mobile','order_views','change_status','email_status','whatsapp_status')
+            $q = User::select('id','name','email','username','role','category','mobile','order_views','change_status','email_status','whatsapp_status','is_rm')
                 ->orderBy('id','desc');
 
             if ($search !== '') {
@@ -206,6 +209,7 @@ class UserController extends Controller
                 'change_status' => ['required',Rule::in(['0','1'])],
                 'whatsapp_status' => ['nullable', Rule::in(['0','1'])],
                 'email_status'    => ['nullable', Rule::in(['0','1'])],
+                'is_rm'           => ['nullable', 'boolean'],
             ]);
 
             $updated = User::where('id', $id)->update([
@@ -218,9 +222,10 @@ class UserController extends Controller
                 'change_status' => $request->change_status,
                 'email_status' => $request->email_status,
                 'whatsapp_status' => $request->whatsapp_status,
+                'is_rm' => (bool) $request->input('is_rm', $client->is_rm ?? false),
             ]);
 
-            $user = User::select('id','name','email','username','mobile','order_views','change_status','updated_at', 'email_status', 'whatsapp_status')
+            $user = User::select('id','name','email','username','mobile','order_views','change_status','updated_at', 'email_status', 'whatsapp_status','is_rm')
                         ->find($id);
 
             return response()->json([
