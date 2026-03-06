@@ -29,6 +29,7 @@ class ClientsController extends Controller
                 'city'          => ['required','string','max:255'],
                 'state'         => ['required','string','max:255'],
                 'pincode'       => ['required','integer','digits:6'],
+                'is_rm'         => ['nullable','boolean'],
 
                 // main RM must be valid staff
                 'rm'            => ['required','integer','exists:users,id'],
@@ -75,6 +76,7 @@ class ClientsController extends Controller
                 'pincode',
                 'sales_person',
                 'rm',
+                'is_rm',
             ]);
 
             $contactPersons = $request->contact_person;
@@ -93,6 +95,7 @@ class ClientsController extends Controller
                     'pincode'       => $clientData['pincode'],
                     'sales_person'  => (int)$clientData['sales_person'],
                     'rm'            => (int)$clientData['rm'],
+                    'is_rm'         => (bool) ($clientData['is_rm'] ?? false),
                 ]);
 
                 // 4.2 Insert contact persons
@@ -163,7 +166,7 @@ class ClientsController extends Controller
                         'salesRef:id,name,username,email',
                         'contactPersons.rmUser:id,name,username,email' // load contact RMs
                     ])
-                    ->select('id','name','category','sub_category','tags','city','state','pincode','rm','sales_person','created_at','updated_at')
+                    ->select('id','name','category','sub_category','tags','city','state','pincode','rm','sales_person','is_rm','created_at','updated_at')
                     ->find($id);
 
                 if (!$client) {
@@ -204,6 +207,7 @@ class ClientsController extends Controller
                 $data = [
                     'id'   => $client->id,
                     'name' => $client->name,
+                    'is_rm' => (bool) $client->is_rm,
 
                     'category' => $client->categoryRef
                         ? ['id' => $client->categoryRef->id, 'name' => $client->categoryRef->name]
@@ -256,7 +260,7 @@ class ClientsController extends Controller
             $categoryRaw = $request->input('category');
             $subCatRaw   = $request->input('sub_category');
             $tagRaw      = $request->input('tags');
-            $rmId        = $request->input('rm');
+            $rmRaw       = $request->input('rm');
             $dateFrom    = $request->input('date_from');
             $dateTo      = $request->input('date_to');
             $cityRaw  = trim((string) $request->input('city', ''));
@@ -277,7 +281,7 @@ class ClientsController extends Controller
                     'salesRef:id,name,username,email',
                     'contactPersons' // Do not load RM here (performance)
                 ])
-                ->select('id','name','category','sub_category','tags','city','state','pincode','rm','sales_person','created_at','updated_at')
+                ->select('id','name','category','sub_category','tags','city','state','pincode','rm','sales_person','is_rm','created_at','updated_at')
                 ->orderBy('id','desc');
 
             if ($search !== '') $q->where('name', 'like', "%{$search}%");
@@ -297,7 +301,14 @@ class ClientsController extends Controller
             if (!empty($stateRaw)) {
                 $q->where('state', 'like', "%{$stateRaw}%");
             }
-            if (!empty($rmId))  $q->where('rm', (int)$rmId);
+            $rmOnly = is_bool($rmRaw) ? $rmRaw : (is_string($rmRaw) && strtolower($rmRaw) === 'true');
+            if ($rmOnly) {
+                $q->whereHas('rmRef', function ($rmQuery) {
+                    $rmQuery->where('is_rm', 1);
+                });
+            } elseif (!empty($rmRaw)) {
+                $q->where('rm', (int)$rmRaw);
+            }
             if (!empty($dateFrom)) $q->whereDate('created_at', '>=', $dateFrom);
             if (!empty($dateTo))   $q->whereDate('created_at', '<=', $dateTo);
 
@@ -329,6 +340,7 @@ class ClientsController extends Controller
                 return [
                     'id'   => $c->id,
                     'name' => $c->name,
+                    'is_rm' => (bool) $c->is_rm,
 
                     'category' => $c->categoryRef
                         ? ['id' => $c->categoryRef->id, 'name' => $c->categoryRef->name]
@@ -413,6 +425,7 @@ class ClientsController extends Controller
                 'pincode'       => ['required','digits_between:4,10'],
                 'rm'            => ['required','integer','exists:users,id'],
                 'sales_person'  => ['required','integer','exists:users,id'],
+                'is_rm'         => ['nullable','boolean'],
             ]);
 
             // Step 3: Merge inputs with old record (fallback logic)
@@ -426,6 +439,7 @@ class ClientsController extends Controller
                 'pincode'       => $request->input('pincode', $client->pincode),
                 'rm'            => $request->input('rm', $client->rm),
                 'sales_person'  => $request->input('sales_person', $client->rm),
+                'is_rm'         => (bool) $request->input('is_rm', $client->is_rm),
             ];
 
             // Step 4: Update safely in a transaction
@@ -456,6 +470,7 @@ class ClientsController extends Controller
             $data = [
                 'id'           => $fresh->id,
                 'name'         => $fresh->name,
+                'is_rm'        => (bool) $fresh->is_rm,
                 'category'     => $fresh->categoryRef
                                     ? ['id'=>$fresh->categoryRef->id, 'name'=>$fresh->categoryRef->name]
                                     : null,

@@ -80,7 +80,7 @@ Route::middleware('auth:sanctum', 'role:admin,sales,staff,dispatch')->group(func
     // clients route
     Route::prefix('clients')->group(function () {
         Route::post('/create', [ClientsController::class, 'create']);
-        Route::post('/retrieve/{id?}', [ClientsController::class, 'fetch']);
+        Route::post('/retrieve/{id?}', [ClientsController::class, 'retrieve']);
         Route::post('/update/{id}', [ClientsController::class, 'edit']);
         Route::delete('/delete/{id}', [ClientsController::class, 'delete']);
         Route::post('/export', [ClientsController::class, 'exportExcel']);
