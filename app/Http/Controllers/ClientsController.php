@@ -398,6 +398,12 @@ class ClientsController extends Controller
         }
     }
 
+    // backward-compatible alias
+    public function retrieve(Request $request, $id = null)
+    {
+        return $this->fetch($request, $id);
+    }
+
     // edit
     public function edit(Request $request, $id)
     {
